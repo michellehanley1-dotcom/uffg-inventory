@@ -1,0 +1,15 @@
+{
+  "name": "UFFG Inventory",
+  "short_name": "UFFG Tools",
+  "description": "Tool and parts tracking for UFFG Construction",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2E6B4F",
+  "theme_color": "#2E6B4F",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

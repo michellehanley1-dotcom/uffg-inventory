@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2E6B4F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="UFFG Tools">
+<title>UFFG Inventory</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root{
+  --green:#2E6B4F; --green-d:#1E4B37; --green-deep:#15372A;
+  --cream:#EFEBE3; --cream2:#F7F5F1; --ink:#15181C; --mut:#6E747C; --line:#DED8CD;
+  --red:#A33A28; --amber:#B07D1A; --white:#fff;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --tabh:62px;
+}
+*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--sans);background:var(--cream2);color:var(--ink);
+  font-size:16px;line-height:1.45;overscroll-behavior-y:none;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+.hide{display:none!important}
+
+/* ---------- chrome ---------- */
+.top{
+  position:sticky;top:0;z-index:30;background:var(--green);color:#fff;
+  padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  display:flex;align-items:center;gap:10px;
+}
+.top img{height:30px;width:auto;border-radius:4px}
+.top h1{font-size:1rem;font-weight:600;letter-spacing:.04em;margin:0;flex:1}
+.top .who{font-size:.72rem;opacity:.85;text-align:right;line-height:1.2}
+main{padding:14px 14px calc(var(--tabh) + env(safe-area-inset-bottom) + 20px)}
+.tabs{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(4,1fr);
+  background:#fff;border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tabs button{
+  background:none;border:0;padding:9px 4px 10px;font-size:.66rem;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--mut);
+  display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;
+}
+.tabs button .ic{font-size:1.15rem;line-height:1}
+.tabs button.on{color:var(--green)}
+
+/* ---------- bits ---------- */
+h2{font-size:1.18rem;margin:0 0 12px}
+.sub{color:var(--mut);font-size:.88rem;margin:-6px 0 14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:10px}
+.row .grow{flex:1;min-width:0}
+.ttl{font-weight:600;line-height:1.25}
+.meta{font-size:.8rem;color:var(--mut);margin-top:2px;overflow:hidden;text-overflow:ellipsis}
+.pill{
+  display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 8px;border-radius:20px;background:var(--cream);color:var(--green-d);white-space:nowrap;
+}
+.pill.bad{background:#F6E2DE;color:var(--red)}
+.pill.warn{background:#F8EFD8;color:var(--amber)}
+.pill.out{background:#E3EAF6;color:#2F4A63}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  background:var(--green);color:#fff;border:1.5px solid var(--green);
+  border-radius:8px;padding:12px 16px;font-size:.92rem;font-weight:600;cursor:pointer;
+}
+.btn:active{background:var(--green-d)}
+.btn.ghost{background:#fff;color:var(--ink);border-color:var(--line)}
+.btn.sm{padding:9px 12px;font-size:.84rem}
+.btn.wide{width:100%}
+.btn.danger{background:var(--red);border-color:var(--red)}
+.btn[disabled]{opacity:.5}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{display:block;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 5px}
+input,select,textarea{
+  width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;background:#fff;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(46,107,79,.15)}
+.field{margin-bottom:12px}
+.err{background:#F6E2DE;color:var(--red);padding:10px 12px;border-radius:8px;font-size:.88rem;margin-bottom:12px}
+.ok{background:#E2EFE7;color:var(--green-d);padding:10px 12px;border-radius:8px;font-size:.88rem;margin-bottom:12px}
+.empty{text-align:center;color:var(--mut);padding:34px 16px;font-size:.92rem}
+.search{margin-bottom:10px}
+.chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px;-webkit-overflow-scrolling:touch}
+.chips button{
+  flex:0 0 auto;background:#fff;border:1px solid var(--line);border-radius:20px;
+  padding:7px 13px;font-size:.8rem;color:var(--mut);cursor:pointer;white-space:nowrap;
+}
+.chips button.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+.banner{
+  background:var(--green-deep);color:#fff;font-size:.8rem;padding:8px 14px;text-align:center;
+}
+.banner.warn{background:var(--amber)}
+.stat{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+.stat div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px}
+.stat b{display:block;font-size:1.7rem;line-height:1.1}
+.stat span{font-size:.72rem;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.stat div.alert b{color:var(--red)}
+
+/* ---------- sheet (bottom modal) ---------- */
+.scrim{position:fixed;inset:0;background:rgba(21,24,28,.5);z-index:50;display:none}
+.scrim.on{display:block}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fff;
+  border-radius:16px 16px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom) + 18px);
+  max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:transform .22s ease;
+}
+.sheet.on{transform:translateY(0)}
+.sheet h3{margin:4px 0 4px;font-size:1.1rem}
+.handle{width:38px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 12px}
+.actions{display:grid;gap:8px;margin-top:6px}
+.lg{font-size:1.4rem;text-align:center;letter-spacing:.3em;font-weight:700}
+.center{text-align:center}
+.link{background:none;border:0;color:var(--green);font-weight:600;cursor:pointer;padding:8px;font-size:.9rem}
+.logline{border-bottom:1px solid var(--line);padding:9px 0;font-size:.85rem}
+.logline:last-child{border-bottom:0}
+.logline .w{color:var(--mut);font-size:.76rem}
+</style>
+</head>
+<body>
+
+<div id="offline" class="banner warn hide">Offline — changes will send when you have signal</div>
+<div id="queued" class="banner hide"></div>
+
+<!-- ============================ SIGN IN ============================ -->
+<section id="auth" class="hide">
+  <div class="top"><img src="icons/icon-192.png" alt=""><h1>UFFG INVENTORY</h1></div>
+  <main>
+    <div id="authErr" class="err hide"></div>
+    <div id="step1">
+      <h2>Sign in</h2>
+      <p class="sub">We'll email you a 6-digit code.</p>
+      <div class="field">
+        <label for="email">Work email</label>
+        <input id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="you@uffgconstruction.com">
+      </div>
+      <button class="btn wide" id="sendCode">Send code</button>
+    </div>
+    <div id="step2" class="hide">
+      <h2>Enter the code</h2>
+      <p class="sub" id="sentTo"></p>
+      <div class="field">
+        <input id="code" class="lg" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+      </div>
+      <button class="btn wide" id="verify">Sign in</button>
+      <div class="center"><button class="link" id="resend">Resend code</button>
+      <button class="link" id="back">Use a different email</button></div>
+    </div>
+  </main>
+</section>
+
+<!-- ============================== APP ============================== -->
+<section id="app" class="hide">
+  <div class="top">
+    <img src="icons/icon-192.png" alt="">
+    <h1 id="viewTitle">OVERVIEW</h1>
+    <div class="who" id="who"></div>
+  </div>
+  <main>
+    <div id="actingAs" class="ok hide"></div>
+    <div id="view"></div>
+  </main>
+  <nav class="tabs">
+    <button data-v="overview" class="on"><span class="ic">▣</span>Overview</button>
+    <button data-v="tools"><span class="ic">⚒</span>Tools</button>
+    <button data-v="parts"><span class="ic">▤</span>Parts</button>
+    <button data-v="more"><span class="ic">≡</span>More</button>
+  </nav>
+</section>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"><div class="handle"></div><div id="sheetBody"></div></div>
+
+<script src="config.js"></script>
+<script>
+/* ===================== tiny helpers ===================== */
+const $  = s => document.querySelector(s);
+const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const uid = () => (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+let TOKEN = LS.get('uffg.token', '');
+let DATA  = LS.get('uffg.data', null);
+let VIEW  = 'overview';
+let VIEWAS = '';
+let QUEUE = LS.get('uffg.queue', []);
+let FILTER = { q: '', loc: '', kind: '' };
+
+/* ===================== server ===================== */
+async function call(fn, args, opts) {
+  opts = opts || {};
+  const body = { fn, args: args || {}, token: TOKEN, id: opts.id || '' };
+  const res = await fetch(CONFIG.SCRIPT_URL, {
+    method: 'POST',
+    // text/plain keeps Apps Script from demanding a CORS preflight
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body),
+    redirect: 'follow'
+  });
+  const out = await res.json();
+  if (!out.ok) {
+    if (out.code === 'AUTH') { signOutLocal(); throw new Error('Please sign in again.'); }
+    throw new Error(out.error || 'Something went wrong.');
+  }
+  return out.data;
+}
+
+/* Mutations go through the queue so a dead zone never loses a change. */
+function enqueue(fn, args, label) {
+  QUEUE.push({ id: uid(), fn, args, label, at: Date.now() });
+  LS.set('uffg.queue', QUEUE);
+  paintQueue();
+  flush();
+}
+
+let flushing = false;
+async function flush() {
+  if (flushing || !navigator.onLine || !TOKEN || !QUEUE.length) return;
+  flushing = true;
+  try {
+    while (QUEUE.length) {
+      const job = QUEUE[0];
+      try {
+        await call(job.fn, job.args, { id: job.id });   // same id twice is ignored server-side
+      } catch (e) {
+        if (/sign in again/i.test(e.message)) break;
+        // A rejected change (e.g. not enough stock) must not block the rest.
+        toast(job.label + ': ' + e.message, true);
+      }
+      QUEUE.shift();
+      LS.set('uffg.queue', QUEUE);
+      paintQueue();
+    }
+    await refresh();
+  } finally { flushing = false; }
+}
+
+function paintQueue() {
+  const n = QUEUE.length, b = $('#queued');
+  b.classList.toggle('hide', n === 0);
+  if (n) b.textContent = n + (n === 1 ? ' change waiting to send' : ' changes waiting to send');
+}
+
+async function refresh() {
+  if (!navigator.onLine) return;
+  try {
+    DATA = await call('bootstrap', VIEWAS ? { viewAs: VIEWAS } : {});
+    LS.set('uffg.data', DATA);
+    render();
+  } catch (e) { /* keep showing the cached copy */ }
+}
+
+/* ===================== sign in ===================== */
+function showAuth() { $('#auth').classList.remove('hide'); $('#app').classList.add('hide'); }
+function showApp()  { $('#auth').classList.add('hide'); $('#app').classList.remove('hide'); }
+
+function authErr(m) {
+  const e = $('#authErr');
+  if (!m) return e.classList.add('hide');
+  e.textContent = m; e.classList.remove('hide');
+}
+
+$('#sendCode').onclick = async () => {
+  const email = $('#email').value.trim().toLowerCase();
+  if (!email) return authErr('Enter your email.');
+  authErr(''); $('#sendCode').disabled = true;
+  try {
+    await call('requestCode', { email });
+    $('#sentTo').textContent = 'Sent to ' + email + '. It expires in 10 minutes.';
+    $('#step1').classList.add('hide'); $('#step2').classList.remove('hide');
+    $('#code').focus(); startResendTimer();
+  } catch (e) { authErr(e.message); }
+  $('#sendCode').disabled = false;
+};
+
+let resendT = 0;
+function startResendTimer() {
+  let left = 45; const b = $('#resend');
+  clearInterval(resendT);
+  const tick = () => {
+    b.disabled = left > 0;
+    b.textContent = left > 0 ? 'Resend in ' + left + 's' : 'Resend code';
+    if (left-- <= 0) clearInterval(resendT);
+  };
+  tick(); resendT = setInterval(tick, 1000);
+}
+$('#resend').onclick = () => { $('#sendCode').click(); };
+$('#back').onclick = () => { $('#step2').classList.add('hide'); $('#step1').classList.remove('hide'); authErr(''); };
+
+$('#verify').onclick = async () => {
+  const email = $('#email').value.trim().toLowerCase();
+  const code = $('#code').value.trim();
+  if (code.length !== 6) return authErr('Enter the 6 digits.');
+  authErr(''); $('#verify').disabled = true;
+  try {
+    const r = await call('verifyCode', { email, code });
+    TOKEN = r.token; LS.set('uffg.token', TOKEN);
+    showApp(); await refresh();
+  } catch (e) { authErr(e.message); }
+  $('#verify').disabled = false;
+};
+$('#code').addEventListener('input', e => {
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+  if (e.target.value.length === 6) $('#verify').click();
+});
+
+function signOutLocal() {
+  TOKEN = ''; DATA = null; VIEWAS = '';
+  LS.del('uffg.token'); LS.del('uffg.data');
+  showAuth();
+}
+
+/* ===================== sheet ===================== */
+function openSheet(title, bodyNode) {
+  const b = $('#sheetBody');
+  b.innerHTML = '';
+  if (title) b.appendChild(el('h3', null, esc(title)));
+  b.appendChild(bodyNode);
+  $('#scrim').classList.add('on'); $('#sheet').classList.add('on');
+}
+function closeSheet() { $('#scrim').classList.remove('on'); $('#sheet').classList.remove('on'); }
+$('#scrim').onclick = closeSheet;
+
+function toast(msg, bad) {
+  const n = el('div', bad ? 'err' : 'ok', esc(msg));
+  n.style.cssText = 'position:fixed;left:14px;right:14px;bottom:calc(var(--tabh) + 16px);z-index:80;margin:0';
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 3200);
+}
+
+/* ===================== derived ===================== */
+const me     = () => (DATA && DATA.me) || { name: '', isManager: false, base: '' };
+const acting = () => (DATA && DATA.acting) || me();
+const locs   = () => (DATA && DATA.locations) || [];
+const tools  = () => (DATA && DATA.tools) || [];
+const parts  = () => (DATA && DATA.parts) || [];
+const stock  = () => (DATA && DATA.stock) || [];
+
+function totalOf(part) {
+  return stock().filter(s => s.part.toLowerCase() === part.toLowerCase())
+               .reduce((a, b) => a + b.qty, 0);
+}
+function byLoc(part) {
+  return stock().filter(s => s.part.toLowerCase() === part.toLowerCase() && s.qty !== 0);
+}
+const lowParts = () => parts().filter(p => p.low > 0 && totalOf(p.part) <= p.low);
+
+/* ===================== render ===================== */
+function render() {
+  if (!DATA) return;
+  $('#who').innerHTML = esc(acting().name) + '<br>' + esc(acting().base || '');
+  $('#viewTitle').textContent = VIEW.toUpperCase();
+  const a = $('#actingAs');
+  if (VIEWAS && me().isManager) {
+    a.classList.remove('hide');
+    a.innerHTML = 'Viewing as <b>' + esc(acting().name) + '</b> — <button class="link" onclick="stopViewAs()">stop</button>';
+  } else a.classList.add('hide');
+
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === VIEW));
+  const v = $('#view'); v.innerHTML = '';
+  ({ overview: vOverview, tools: vTools, parts: vParts, more: vMore })[VIEW](v);
+}
+
+document.querySelectorAll('.tabs button').forEach(b => {
+  b.onclick = () => { VIEW = b.dataset.v; FILTER = { q: '', loc: '', kind: '' }; render(); window.scrollTo(0, 0); };
+});
+
+/* ---------- overview ---------- */
+function vOverview(v) {
+  const out = tools().filter(t => t.by);
+  const rep = tools().filter(t => t.status === 'Needs repair' || t.status === 'Lost');
+  const nol = tools().filter(t => !t.location);
+  const low = lowParts();
+
+  const s = el('div', 'stat');
+  s.innerHTML =
+    `<div class="${low.length ? 'alert' : ''}"><b>${low.length}</b><span>Low on stock</span></div>
+     <div><b>${out.length}</b><span>Checked out</span></div>
+     <div class="${rep.length ? 'alert' : ''}"><b>${rep.length}</b><span>Repair / lost</span></div>
+     <div><b>${tools().length}</b><span>Tools total</span></div>`;
+  v.appendChild(s);
+
+  section(v, 'Low on stock', low.map(p => ({
+    ttl: p.part, meta: totalOf(p.part) + ' ' + p.unit + ' left · target ' + p.low,
+    pill: 'Low', cls: 'bad', onclick: () => partSheet(p)
+  })), 'Nothing is low.');
+
+  section(v, 'Checked out', out.map(t => ({
+    ttl: t.name, meta: t.by + ' · ' + t.location, pill: t.id, cls: 'out',
+    onclick: () => toolSheet(t)
+  })), 'Nothing is checked out.');
+
+  section(v, 'Needs repair or lost', rep.map(t => ({
+    ttl: t.name, meta: (t.location || 'No location') + (t.notes ? ' · ' + t.notes : ''),
+    pill: t.status, cls: 'bad', onclick: () => toolSheet(t)
+  })), 'Everything is in good shape.');
+
+  if (nol.length) section(v, 'No location set', nol.map(t => ({
+    ttl: t.name, meta: t.id, pill: '?', cls: 'warn', onclick: () => toolSheet(t)
+  })), '');
+}
+
+function section(v, title, items, emptyMsg) {
+  if (!items.length && !emptyMsg) return;
+  v.appendChild(el('h2', null, esc(title)));
+  if (!items.length) { v.appendChild(el('div', 'empty', esc(emptyMsg))); return; }
+  items.forEach(i => {
+    const c = el('div', 'card');
+    c.innerHTML = `<div class="row"><div class="grow">
+        <div class="ttl">${esc(i.ttl)}</div><div class="meta">${esc(i.meta)}</div>
+      </div><span class="pill ${i.cls || ''}">${esc(i.pill)}</span></div>`;
+    c.onclick = i.onclick;
+    v.appendChild(c);
+  });
+}
+
+/* ---------- tools ---------- */
+function vTools(v) {
+  const search = el('div', 'search');
+  search.innerHTML = `<input id="q" type="search" placeholder="Search tools" value="${esc(FILTER.q)}">`;
+  v.appendChild(search);
+  search.querySelector('input').oninput = e => { FILTER.q = e.target.value; redrawList(); };
+
+  const chips = el('div', 'chips');
+  const opts = [['', 'All places']].concat(locs().map(l => [l.name, l.name]));
+  opts.forEach(([val, lab]) => {
+    const b = el('button', FILTER.loc === val ? 'on' : '', esc(lab));
+    b.onclick = () => { FILTER.loc = val; render(); };
+    chips.appendChild(b);
+  });
+  v.appendChild(chips);
+
+  if (me().isManager || true) {
+    const add = el('button', 'btn ghost wide', '+ Add a tool');
+    add.style.marginBottom = '12px';
+    add.onclick = addToolSheet;
+    v.appendChild(add);
+  }
+
+  const list = el('div'); list.id = 'list'; v.appendChild(list);
+  redrawList();
+}
+
+function redrawList() {
+  const list = $('#list'); if (!list) return;
+  const q = FILTER.q.toLowerCase();
+  const items = tools().filter(t =>
+    (!FILTER.loc || t.location === FILTER.loc) &&
+    (!q || (t.name + ' ' + t.brand + ' ' + t.model + ' ' + t.id).toLowerCase().includes(q))
+  );
+  list.innerHTML = '';
+  if (!items.length) { list.appendChild(el('div', 'empty', 'No tools match.')); return; }
+  items.forEach(t => {
+    const bad = t.status !== 'Good';
+    const c = el('div', 'card');
+    c.innerHTML = `<div class="row"><div class="grow">
+        <div class="ttl">${esc(t.name)}</div>
+        <div class="meta">${esc([t.brand, t.model, t.id].filter(Boolean).join(' · '))}</div>
+        <div class="meta">${esc(t.location || 'No location')}${t.by ? ' · ' + esc(t.by) : ''}</div>
+      </div><span class="pill ${bad ? 'bad' : (t.by ? 'out' : '')}">${esc(bad ? t.status : (t.by ? 'Out' : 'In'))}</span></div>`;
+    c.onclick = () => toolSheet(t);
+    list.appendChild(c);
+  });
+}
+
+function toolSheet(t) {
+  const b = el('div');
+  b.innerHTML = `<div class="meta" style="margin-bottom:12px">
+      ${esc([t.brand, t.model, t.id].filter(Boolean).join(' · '))}<br>
+      ${esc(t.location || 'No location')}${t.by ? ' · with ' + esc(t.by) : ''} · ${esc(t.status)}
+      ${t.notes ? '<br>' + esc(t.notes) : ''}</div>`;
+  const acts = el('div', 'actions');
+
+  const mine = acting().base;
+  if (mine && t.location !== mine) {
+    acts.appendChild(btn('Check out to ' + mine, () => {
+      enqueue('moveTool', { toolId: t.id, to: mine, viewAs: VIEWAS }, t.name);
+      optimisticMove(t, mine, acting().name); closeSheet();
+    }));
+  }
+  const shop = (locs().find(l => l.type === 'Shop') || {}).name;
+  if (shop && t.location !== shop) {
+    acts.appendChild(btn('Return to ' + shop, () => {
+      enqueue('moveTool', { toolId: t.id, to: shop, viewAs: VIEWAS }, t.name);
+      optimisticMove(t, shop, ''); closeSheet();
+    }, 'ghost'));
+  }
+  acts.appendChild(btn('Move somewhere else…', () => movePicker(t), 'ghost'));
+  acts.appendChild(btn('Mark status…', () => statusPicker(t), 'ghost'));
+  b.appendChild(acts);
+  openSheet(t.name, b);
+}
+
+function optimisticMove(t, to, by) {
+  t.location = to; t.by = by; LS.set('uffg.data', DATA); render();
+}
+
+function btn(label, fn, cls) {
+  const b = el('button', 'btn ' + (cls || ''), esc(label));
+  b.onclick = fn; return b;
+}
+
+function movePicker(t) {
+  const b = el('div');
+  const acts = el('div', 'actions');
+  locs().filter(l => l.name !== t.location).forEach(l => {
+    acts.appendChild(btn(l.name, () => {
+      enqueue('moveTool', { toolId: t.id, to: l.name, viewAs: VIEWAS }, t.name);
+      optimisticMove(t, l.name, l.name === acting().base ? acting().name : ''); closeSheet();
+    }, 'ghost'));
+  });
+  b.appendChild(acts);
+  openSheet('Move ' + t.name, b);
+}
+
+function statusPicker(t) {
+  const b = el('div');
+  b.innerHTML = `<div class="field"><label for="snote">Note (optional)</label>
+    <input id="snote" placeholder="What is wrong with it?"></div>`;
+  const acts = el('div', 'actions');
+  (DATA.statuses || ['Good', 'Needs repair', 'Lost']).forEach(s => {
+    acts.appendChild(btn(s, () => {
+      const note = $('#snote').value.trim();
+      enqueue('setToolStatus', { toolId: t.id, status: s, note, viewAs: VIEWAS }, t.name);
+      t.status = s; if (note) t.notes = note; LS.set('uffg.data', DATA); render(); closeSheet();
+    }, s === 'Good' ? '' : 'ghost'));
+  });
+  b.appendChild(acts);
+  openSheet(t.name + ' — status', b);
+}
+
+function addToolSheet() {
+  const b = el('div');
+  b.innerHTML = `
+    <div class="field"><label for="tn">Name</label><input id="tn" placeholder="Impact driver"></div>
+    <div class="grid2">
+      <div class="field"><label for="tb">Brand</label><input id="tb" placeholder="Milwaukee"></div>
+      <div class="field"><label for="tm">Model</label><input id="tm" placeholder="2853-20"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="ti">Tool ID / nickname</label><input id="ti" placeholder="auto"></div>
+      <div class="field"><label for="tl">Location</label><select id="tl">
+        ${locs().map(l => `<option ${l.name === acting().base ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
+      </select></div>
+    </div>`;
+  b.appendChild(btn('Add tool', () => {
+    const name = $('#tn').value.trim();
+    if (!name) return toast('Give it a name.', true);
+    const args = { name, brand: $('#tb').value.trim(), model: $('#tm').value.trim(),
+                   id: $('#ti').value.trim(), location: $('#tl').value, viewAs: VIEWAS };
+    enqueue('addTool', args, name);
+    tools().push({ id: args.id || '(new)', name, brand: args.brand, model: args.model,
+                   status: 'Good', location: args.location, by: '', at: '', notes: '' });
+    LS.set('uffg.data', DATA); render(); closeSheet(); toast('Added ' + name);
+  }));
+  openSheet('Add a tool', b);
+}
+
+/* ---------- parts ---------- */
+function vParts(v) {
+  const search = el('div', 'search');
+  search.innerHTML = `<input id="qp" type="search" placeholder="Search parts" value="${esc(FILTER.q)}">`;
+  v.appendChild(search);
+  search.querySelector('input').oninput = e => { FILTER.q = e.target.value; redrawParts(); };
+
+  if (me().isManager) {
+    const add = el('button', 'btn ghost wide', '+ Add a part');
+    add.style.marginBottom = '12px';
+    add.onclick = addPartSheet;
+    v.appendChild(add);
+  }
+  const list = el('div'); list.id = 'plist'; v.appendChild(list);
+  redrawParts();
+}
+
+function redrawParts() {
+  const list = $('#plist'); if (!list) return;
+  const q = FILTER.q.toLowerCase();
+  const items = parts().filter(p => !q || (p.part + ' ' + p.brand).toLowerCase().includes(q));
+  list.innerHTML = '';
+  if (!items.length) {
+    list.appendChild(el('div', 'empty', parts().length ? 'No parts match.' :
+      'No parts yet. A manager can add them, or import a list from More.'));
+    return;
+  }
+  items.forEach(p => {
+    const tot = totalOf(p.part), low = p.low > 0 && tot <= p.low;
+    const where = byLoc(p.part).map(s => s.location + ' ' + s.qty).join(' · ');
+    const c = el('div', 'card');
+    c.innerHTML = `<div class="row"><div class="grow">
+        <div class="ttl">${esc(p.part)}</div>
+        <div class="meta">${esc(where || 'None anywhere')}</div>
+      </div><span class="pill ${low ? 'bad' : ''}">${tot} ${esc(p.unit)}</span></div>`;
+    c.onclick = () => partSheet(p);
+    list.appendChild(c);
+  });
+}
+
+function partSheet(p) {
+  const b = el('div');
+  const where = byLoc(p.part);
+  b.innerHTML = `<div class="meta" style="margin-bottom:12px">
+      ${esc(where.length ? where.map(s => s.location + ': ' + s.qty).join(' · ') : 'None anywhere')}
+      ${p.low > 0 ? ' · low at ' + p.low : ''}</div>
+    <div class="grid2">
+      <div class="field"><label for="pl">Location</label><select id="pl">
+        ${locs().map(l => `<option ${l.name === acting().base ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
+      </select></div>
+      <div class="field"><label for="pq">How many</label>
+        <input id="pq" type="number" inputmode="numeric" min="1" value="1"></div>
+    </div>`;
+  const acts = el('div', 'actions');
+  [['Picked up', 'Took some from this location'],
+   ['Dropped off', 'Put some back here'],
+   ['New stock', 'Just bought more'],
+   ['Used', 'Used it up on a job'],
+   ['Count', 'Set the exact number here']
+  ].forEach(([reason]) => {
+    acts.appendChild(btn(reason, () => {
+      const loc = $('#pl').value, qty = Number($('#pq').value) || 0;
+      enqueue('adjustStock', { part: p.part, location: loc, qty, reason, viewAs: VIEWAS }, p.part);
+      const row = stock().find(s => s.part.toLowerCase() === p.part.toLowerCase() && s.location === loc);
+      const before = row ? row.qty : 0;
+      const after = reason === 'Count' ? qty
+                  : (reason === 'Used' || reason === 'Picked up') ? Math.max(0, before - qty) : before + qty;
+      if (row) row.qty = after; else stock().push({ part: p.part, location: loc, qty: after });
+      LS.set('uffg.data', DATA); render(); closeSheet();
+    }, reason === 'Picked up' ? '' : 'ghost'));
+  });
+  if (me().isManager) {
+    acts.appendChild(btn('Set low target…', () => {
+      const bb = el('div');
+      bb.innerHTML = `<div class="field"><label for="lt">Warn me when total is at or below</label>
+        <input id="lt" type="number" inputmode="numeric" min="0" value="${p.low}"></div>`;
+      bb.appendChild(btn('Save', () => {
+        const low = Number($('#lt').value) || 0;
+        enqueue('setLowTarget', { part: p.part, low }, p.part);
+        p.low = low; LS.set('uffg.data', DATA); render(); closeSheet();
+      }));
+      openSheet(p.part + ' — low target', bb);
+    }, 'ghost'));
+  }
+  b.appendChild(acts);
+  openSheet(p.part, b);
+}
+
+function addPartSheet() {
+  const b = el('div');
+  b.innerHTML = `
+    <div class="field"><label for="pn">Part</label><input id="pn" placeholder="Tek screws 1 in"></div>
+    <div class="grid2">
+      <div class="field"><label for="pu">Unit</label><input id="pu" placeholder="box" value="ea"></div>
+      <div class="field"><label for="plw">Low at</label><input id="plw" type="number" inputmode="numeric" value="0"></div>
+    </div>`;
+  b.appendChild(btn('Add part', () => {
+    const name = $('#pn').value.trim();
+    if (!name) return toast('Give it a name.', true);
+    enqueue('addPart', { part: name, unit: $('#pu').value.trim() || 'ea', low: Number($('#plw').value) || 0 }, name);
+    parts().push({ part: name, brand: '', unit: $('#pu').value.trim() || 'ea', low: Number($('#plw').value) || 0 });
+    LS.set('uffg.data', DATA); render(); closeSheet(); toast('Added ' + name);
+  }));
+  openSheet('Add a part', b);
+}
+
+/* ---------- more ---------- */
+function vMore(v) {
+  v.appendChild(el('h2', null, 'Locations'));
+  locs().forEach(l => {
+    const c = el('div', 'card');
+    c.innerHTML = `<div class="row"><div class="grow"><div class="ttl">${esc(l.name)}</div>
+      <div class="meta">${esc(l.type)}</div></div></div>`;
+    v.appendChild(c);
+  });
+  const addL = el('button', 'btn ghost wide', '+ Add a job site');
+  addL.style.margin = '0 0 20px';
+  addL.onclick = () => {
+    const b = el('div');
+    b.innerHTML = `<div class="field"><label for="ln">Name</label><input id="ln" placeholder="Sherman Lofts"></div>`;
+    b.appendChild(btn('Add', () => {
+      const name = $('#ln').value.trim();
+      if (!name) return toast('Give it a name.', true);
+      enqueue('addLocation', { name, type: 'Job site' }, name);
+      locs().push({ name, type: 'Job site' }); LS.set('uffg.data', DATA); render(); closeSheet();
+    }));
+    openSheet('Add a job site', b);
+  };
+  v.appendChild(addL);
+
+  if (me().isManager) {
+    v.appendChild(el('h2', null, 'Team'));
+    (DATA.team || []).forEach(t => {
+      const c = el('div', 'card');
+      c.innerHTML = `<div class="row"><div class="grow"><div class="ttl">${esc(t.name)}</div>
+        <div class="meta">${esc(t.email)} · ${esc(t.base || 'no base')}</div></div>
+        <span class="pill">${esc(t.role)}</span></div>`;
+      if (t.email !== me().email) c.onclick = () => { VIEWAS = t.email; refresh(); closeSheet(); };
+      v.appendChild(c);
+    });
+    v.appendChild(el('div', 'sub', 'Tap a person to view as them. Edit the Team tab in the sheet to add or remove people.'));
+
+    const imp = el('button', 'btn ghost wide', 'Import a list');
+    imp.style.margin = '6px 0 20px';
+    imp.onclick = importSheet;
+    v.appendChild(imp);
+  }
+
+  v.appendChild(el('h2', null, 'Recent activity'));
+  const log = el('div', 'card');
+  (DATA.log || []).slice(0, 40).forEach(l => {
+    const d = l.when ? new Date(l.when) : null;
+    const when = d ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' +
+                     d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '';
+    const line = el('div', 'logline');
+    line.innerHTML = `<div>${esc(l.action)} — <b>${esc(l.item)}</b>${l.to ? ' → ' + esc(l.to) : ''}</div>
+                      <div class="w">${esc(l.who)} · ${esc(when)}</div>`;
+    log.appendChild(line);
+  });
+  if (!(DATA.log || []).length) log.appendChild(el('div', 'empty', 'Nothing yet.'));
+  v.appendChild(log);
+
+  const out = el('button', 'btn danger wide', 'Sign out');
+  out.style.marginTop = '20px';
+  out.onclick = async () => {
+    try { await call('signOut', {}); } catch (e) {}
+    signOutLocal();
+  };
+  v.appendChild(out);
+  v.appendChild(el('div', 'sub center', 'v' + (DATA.version || '?')));
+}
+
+function stopViewAs() { VIEWAS = ''; refresh(); }
+window.stopViewAs = stopViewAs;
+
+function importSheet() {
+  const b = el('div');
+  b.innerHTML = `
+    <div class="field"><label for="ik">What are you importing</label>
+      <select id="ik"><option value="tools">Tools</option><option value="parts">Parts</option></select></div>
+    <div class="field"><label for="itxt">One per line</label>
+      <textarea id="itxt" rows="9" placeholder="Impact driver, Milwaukee, 2853-20&#10;Sawzall, Milwaukee, 2821-20"></textarea></div>
+    <div class="sub">Tools: name, brand, model, ID, location.<br>Parts: name, brand, unit, low target.<br>Separate with commas. Only the first is required.</div>`;
+  b.appendChild(btn('Import', () => {
+    const kind = $('#ik').value;
+    const rows = $('#itxt').value.split('\n').map(l => l.split(',').map(s => s.trim())).filter(r => r[0]);
+    if (!rows.length) return toast('Nothing to import.', true);
+    enqueue('bulkImport', { kind, rows }, 'Import');
+    closeSheet(); toast('Importing ' + rows.length + ' rows…');
+  }));
+  openSheet('Import a list', b);
+}
+
+/* ===================== boot ===================== */
+function paintOnline() {
+  $('#offline').classList.toggle('hide', navigator.onLine);
+  if (navigator.onLine) flush();
+}
+window.addEventListener('online', paintOnline);
+window.addEventListener('offline', paintOnline);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { paintOnline(); refresh(); } });
+
+(async function boot() {
+  paintOnline(); paintQueue();
+  if (!TOKEN) { showAuth(); return; }
+  showApp();
+  if (DATA) render();
+  await refresh();
+  if (!DATA) showAuth();
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
