@@ -347,6 +347,7 @@ label.check input{width:auto;margin:0}
 const $  = s => document.querySelector(s);
 const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const APP_VERSION = '2.6.4';
 const uid = () => (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
 const LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -1049,7 +1050,7 @@ function vMore(v) {
     signOutLocal();
   };
   v.appendChild(out);
-  v.appendChild(el('div', 'sub center', 'v' + (DATA.version || '?')));
+  v.appendChild(el('div', 'sub center', 'App ' + APP_VERSION + ' · server ' + (DATA.version || '?')));
 }
 
 function stopViewAs() { VIEWAS = ''; ROUTES = []; VIEW = ''; refresh(); }
@@ -3462,6 +3463,13 @@ fixBottomGap();
 document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(fixBottomGap, 60); });
 
 if ('serviceWorker' in navigator) {
+  // When a newer version takes over, reload once so it's used right away.
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloaded || (DIRTY && route().view === 'doc') || BDIRTY || $('#sheet').classList.contains('on')) return;
+    reloaded = true; location.reload();
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {}); });
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
 </script>
