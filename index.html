@@ -237,6 +237,8 @@ label.check input{width:auto;margin:0}
 .link.dep{padding:2px 0 0;font-size:.8rem}
 .receipt.big img{max-height:46vh}
 .rimg{position:relative}
+.rcload{height:120px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:.86rem;margin-bottom:8px}
+input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block;min-height:46px;text-align:left}
 .zoombtn{position:absolute;right:8px;bottom:16px;background:rgba(21,24,28,.72);color:#fff;border:0;border-radius:16px;padding:6px 11px;font-size:.78rem;font-weight:600;cursor:pointer}
 .viewer{position:fixed;inset:0;z-index:200;background:#0d0f12;display:flex;flex-direction:column;color:#fff}
 .vbar{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px}
@@ -354,7 +356,7 @@ label.check input{width:auto;margin:0}
 const $  = s => document.querySelector(s);
 const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const APP_VERSION = '2.7.0';
+const APP_VERSION = '2.7.1';
 const uid = () => (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
 const LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -2128,12 +2130,13 @@ function expenseSheet(x, presetJob, opts) {
       const z = el('button', 'zoombtn', '🔍 Zoom'); z.type = 'button'; z.onclick = () => openViewer(shown, x.vendor || 'Receipt');
       wrap.appendChild(z); rc.appendChild(wrap);
     } else if (x.file && !removeReceipt && !autoTried && navigator.onLine) {
-      autoTried = true; loadReceipt();                       // show the photo right away, no extra tap
+      autoTried = true; setTimeout(loadReceipt, 0);          // show the photo right away, no extra tap
     }
+    if (!shown && loadingRc) { rc.appendChild(el('div', 'rcload', 'Loading the receipt photo…')); return; }
     const row = el('div', 'grid2');
     if (shown || (x.receipt && !removeReceipt)) {
       if (!shown && !x.file && x.link) row.appendChild(btn('Open receipt in Drive', () => window.open(x.link, '_blank'), 'ghost'));
-      else if (!shown) row.appendChild(btn(loadingRc ? 'Loading receipt…' : 'View receipt', () => loadReceipt(), 'ghost'));
+      else if (!shown) row.appendChild(btn('View receipt', () => loadReceipt(), 'ghost'));
       row.appendChild(btn('Replace photo', () => fileIn.click(), 'ghost'));
       row.appendChild(btn('Remove', () => { pending = null; scanned = null; preview = null; status = ''; removeReceipt = true; paintReceipt(); }, 'ghost dangertext'));
     } else {
