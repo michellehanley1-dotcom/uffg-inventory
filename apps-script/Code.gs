@@ -4,7 +4,7 @@
  * Columns are always found by header NAME, never by position.
  */
 
-var VERSION   = '2.4.0';
+var VERSION   = '2.5.0';
 var SHEET_ID  = ''; // leave blank to use the sheet this script is bound to
 var CODE_TTL  = 10 * 60 * 1000;        // 6-digit code lifetime
 var CODE_TRIES= 5;
@@ -27,16 +27,20 @@ var TABS = {
   Docs:      ['ID','BUSINESS','TYPE','NUMBER','CUSTOMER','TITLE','SITE','STATUS','DATE','DUE','PARENT','LINES',
               'TAX RATE','DISCOUNT','DEPOSIT','NOTES','TERMS','SUBTOTAL','TAX','TOTAL','PAID','BILLED',
               'SENT AT','APPROVED AT','CREATED BY','CREATED','UPDATED','DELETED'],
-  Payments:  ['ID','INVOICE','DATE','AMOUNT','METHOD','NOTE','WHO','DELETED'],
+  Payments:  ['ID','INVOICE','DATE','AMOUNT','METHOD','NOTE','WHO','DELETED','BANK'],
   Expenses:  ['ID','BUSINESS','STATUS','DATE','VENDOR','ACCOUNT','AMOUNT','METHOD','JOB','NOTE','RECEIPT',
-              'RECEIPT LINK','HASH','DUP OF','SCANNED','CREATED BY','CREATED','UPDATED','DELETED'],
-  Company:   ['KEY','VALUE']
+              'RECEIPT LINK','HASH','DUP OF','SCANNED','CREATED BY','CREATED','UPDATED','DELETED',
+              'BANK','PAID BY','CHECK NO','CHECK FILE','CHECK LINK'],
+  Company:   ['KEY','VALUE'],
+  Banks:     ['ID','BUSINESS','NAME','TYPE','INSTITUTION','LAST4','OPENING BALANCE','OPENING DATE','ACTIVE','CREATED'],
+  Vendors:   ['ID','BUSINESS','NAME','TYPE','PHONE','EMAIL','NOTES','ACTIVE','CREATED'],
+  Banking:   ['ID','BUSINESS','TYPE','DATE','AMOUNT','BANK','TO BANK','PERSON','NOTE','WHO','CREATED','DELETED']
 };
 
 /** Tabs stored as plain text so Sheets never turns "2026-11-13" or "1/2" into a date. */
-var TEXT_TABS = { Customers:1, Services:1, Docs:1, Payments:1, Expenses:1, Company:1 };
+var TEXT_TABS = { Customers:1, Services:1, Docs:1, Payments:1, Expenses:1, Company:1, Banks:1, Vendors:1, Banking:1 };
 /** Columns kept as real numbers so the sheet can add them up. */
-var MONEY_COLS = { Expenses: { 'AMOUNT': 1 }, Payments: { 'AMOUNT': 1 } };
+var MONEY_COLS = { Expenses: { 'AMOUNT': 1 }, Payments: { 'AMOUNT': 1 }, Banking: { 'AMOUNT': 1 }, Banks: { 'OPENING BALANCE': 1 } };
 
 function moneyCells_(name, sh, h, rowNum, arr) {
   var cols = MONEY_COLS[name]; if (!cols) return;
@@ -579,6 +583,8 @@ var ACCOUNTS = [
   { code: '5300', name: 'Equipment rental',             type: 'cogs' },
   { code: '5400', name: 'Permits & inspections',        type: 'cogs' },
   { code: '5500', name: 'Dump & disposal',              type: 'cogs' },
+  { code: '5600', name: 'Job travel & lodging',         type: 'cogs' },
+  { code: '5700', name: 'Job supplies & small tools',   type: 'cogs' },
   { code: '6000', name: 'Fuel',                         type: 'expense' },
   { code: '6100', name: 'Vehicle repairs & maintenance', type: 'expense' },
   { code: '6200', name: 'Tools & small equipment',      type: 'expense' },
@@ -892,7 +898,8 @@ function addPayment_(a, me) {
   if (findBy_('Payments', 'ID', id)) return { ok: true };
   append_('Payments', {
     'ID': id, 'INVOICE': norm_(a.invoice), 'DATE': norm_(a.date), 'AMOUNT': amt,
-    'METHOD': norm_(a.method).slice(0, 50), 'NOTE': norm_(a.note).slice(0, 500), 'WHO': me.name, 'DELETED': ''
+    'METHOD': norm_(a.method).slice(0, 50), 'NOTE': norm_(a.note).slice(0, 500), 'WHO': me.name, 'DELETED': '',
+    'BANK': bankFor_(a.bank, bizKey_(inv['BUSINESS']))
   });
   recalcPaid_(a.invoice);
   log_(me.name, 'Payment', 'Doc', norm_(inv['NUMBER']), '', '', String(amt), norm_(a.method));
@@ -1057,9 +1064,11 @@ function lastAccountFor_(business, vendor) {
 function expenseOut_(x) {
   return { id: norm_(x['ID']), business: bizKey_(x['BUSINESS']), status: norm_(x['STATUS']) || 'Booked', date: dstr_(x['DATE']),
            vendor: norm_(x['VENDOR']), account: norm_(x['ACCOUNT']), amount: num_(x['AMOUNT']), method: norm_(x['METHOD']),
-           job: norm_(x['JOB']), note: norm_(x['NOTE']), receipt: !!norm_(x['RECEIPT']), link: norm_(x['RECEIPT LINK']),
+           job: norm_(x['JOB']), note: norm_(x['NOTE']), receipt: !!(norm_(x['RECEIPT']) || norm_(x['RECEIPT LINK'])), link: norm_(x['RECEIPT LINK']),
            hash: norm_(x['HASH']), dupOf: norm_(x['DUP OF']), scanned: !!norm_(x['SCANNED']),
-           createdBy: norm_(x['CREATED BY']), created: norm_(x['CREATED']) };
+           createdBy: norm_(x['CREATED BY']), created: norm_(x['CREATED']),
+           file: !!norm_(x['RECEIPT']), bank: norm_(x['BANK']), paidBy: norm_(x['PAID BY']), checkNo: norm_(x['CHECK NO']),
+           checkFile: !!norm_(x['CHECK FILE']), checkLink: norm_(x['CHECK LINK']) };
 }
 
 /** Save the photo to Drive right away and read it. With createDraft, also file it as an expense "To review". */
@@ -1098,7 +1107,7 @@ function saveExpense_(a, me) {
   var id = norm_(a.id) || Utilities.getUuid();
   var status = norm_(a.status) === 'Review' ? 'Review' : 'Booked';
   var amt = r2_(a.amount);
-  if (status === 'Booked' && amt <= 0) throw new Error('Enter the amount.');
+  if (status === 'Booked' && !amt) throw new Error('Enter the amount.');
   var existing = findBy_('Expenses', 'ID', id);
   if (existing && lower_(existing['DELETED']) === 'yes') return { ok: true };
   var rec = {
@@ -1108,6 +1117,15 @@ function saveExpense_(a, me) {
     'UPDATED': now_().toISOString()
   };
   var b = bizKey_(existing ? existing['BUSINESS'] : a.business);
+  if (a.bank !== undefined) { rec['BANK'] = bankFor_(a.bank, b); }
+  if (a.paidBy !== undefined) rec['PAID BY'] = rec['BANK'] ? '' : norm_(a.paidBy).slice(0, 100);
+  if (a.checkNo !== undefined) rec['CHECK NO'] = norm_(a.checkNo).replace(/^#/, '').slice(0, 20);
+  if (a.checkImage && a.checkImage.data) {
+    rec['CHECK FILE'] = receiptsFolder_(b, rec['DATE']).createFile(Utilities.newBlob(Utilities.base64Decode(a.checkImage.data), a.checkImage.type || 'image/jpeg', 'check.jpg')).getId();
+  } else if (norm_(a.checkFile)) rec['CHECK FILE'] = norm_(a.checkFile);
+  else if (a.removeCheck) { rec['CHECK FILE'] = ''; rec['CHECK LINK'] = ''; }
+  var cfid = rec['CHECK FILE'] !== undefined ? rec['CHECK FILE'] : (existing ? norm_(existing['CHECK FILE']) : '');
+  if (cfid) rec['CHECK LINK'] = fileCheck_(cfid, b, rec, existing) || (existing ? norm_(existing['CHECK LINK']) : '');
   if (norm_(a.hash)) rec['HASH'] = norm_(a.hash).slice(0, 80);
   if (a.receipt && a.receipt.data) {
     var blob = Utilities.newBlob(Utilities.base64Decode(a.receipt.data), a.receipt.type || 'image/jpeg', 'receipt.jpg');
@@ -1145,8 +1163,8 @@ function deleteExpense_(a, me) {
 function getReceipt_(a, me) {
   mustManage_(me);
   var r = findBy_('Expenses', 'ID', a.id);
-  var fid = r && norm_(r['RECEIPT']);
-  if (!fid) throw new Error('No receipt saved for this expense.');
+  var fid = r && norm_(r[a.which === 'check' ? 'CHECK FILE' : 'RECEIPT']);
+  if (!fid) throw new Error(a.which === 'check' ? 'No check photo saved for this expense.' : 'No receipt saved for this expense.');
   var blob = DriveApp.getFileById(fid).getBlob();
   return { type: blob.getContentType(), data: Utilities.base64Encode(blob.getBytes()) };
 }
@@ -1159,6 +1177,283 @@ function authorizeDrive() {
   if (typeof Drive !== 'undefined') Logger.log('Receipt reading is on.');
   else Logger.log('Receipt reading is OFF: add the "Drive API" service (Services +) to turn it on.');
   DocumentApp.getActiveDocument;   // makes Google ask for Docs permission too (used to read scanned text)
+}
+
+/* ---- banks, cards, checks ---- */
+
+var BANK_TYPES = { checking: 'Checking', savings: 'Savings', card: 'Credit card' };
+var BANKING_TYPES = {                       // what each kind of entry does to the bank, and where the other side goes
+  contribution: 'Owner put money in', draw: 'Owner took money out', loan_in: 'Loan received', loan_pay: 'Loan payment',
+  tax_pay: 'Sales tax paid', transfer: 'Transfer / card payment', reimburse: 'Paid back out-of-pocket expenses'
+};
+
+/** A bank id that belongs to this business, or '' — so nobody can pay a Uribest check from a UFFG account. */
+function bankFor_(id, business) {
+  id = norm_(id); if (!id) return '';
+  var r = findBy_('Banks', 'ID', id);
+  if (!r || bizKey_(r['BUSINESS']) !== business) throw new Error('That bank account isn’t part of ' + BUSINESSES[business].defaults.name + '.');
+  return id;
+}
+function bankOut_(r) {
+  return { id: norm_(r['ID']), business: bizKey_(r['BUSINESS']), name: norm_(r['NAME']), type: BANK_TYPES[lower_(r['TYPE'])] ? lower_(r['TYPE']) : 'checking',
+           institution: norm_(r['INSTITUTION']), last4: norm_(r['LAST4']), opening: num_(r['OPENING BALANCE']),
+           openingDate: dstr_(r['OPENING DATE']), active: lower_(r['ACTIVE']) !== 'no' };
+}
+
+function saveBank_(a, me) {
+  mustManage_(me);
+  var id = norm_(a.id) || Utilities.getUuid(), name = norm_(a.name);
+  if (!name) throw new Error('Give the account a name.');
+  var rec = { 'NAME': name.slice(0, 100), 'TYPE': BANK_TYPES[lower_(a.type)] ? lower_(a.type) : 'checking',
+    'INSTITUTION': norm_(a.institution).slice(0, 200), 'LAST4': norm_(a.last4).replace(/\D/g, '').slice(-4),
+    'OPENING BALANCE': r2_(a.opening), 'OPENING DATE': norm_(a.openingDate), 'ACTIVE': a.active === false ? 'NO' : 'YES' };
+  var r = findBy_('Banks', 'ID', id);
+  if (r) writeRow_('Banks', r._row, rec);
+  else {
+    rec['ID'] = id; rec['BUSINESS'] = bizKey_(a.business); rec['CREATED'] = now_().toISOString();
+    append_('Banks', rec);
+    log_(me.name, 'Added bank account', 'Bank', name, '', '', '', '');
+  }
+  return { ok: true, id: id };
+}
+
+/* ---- vendors & subcontractors ---- */
+
+function saveVendor_(a, me) {
+  mustManage_(me);
+  var id = norm_(a.id) || Utilities.getUuid(), name = norm_(a.name);
+  if (!name) throw new Error('Give the vendor a name.');
+  var rec = { 'NAME': name.slice(0, 200), 'TYPE': lower_(a.type) === 'contractor' ? 'contractor' : 'vendor',
+    'PHONE': norm_(a.phone).slice(0, 50), 'EMAIL': norm_(a.email).slice(0, 200), 'NOTES': norm_(a.notes).slice(0, 1000), 'ACTIVE': 'YES' };
+  var r = findBy_('Vendors', 'ID', id);
+  if (!r) {                                                       // same name in the same business = same vendor
+    var b = bizKey_(a.business), vk = vendorKey_(name);
+    rows_('Vendors').forEach(function (v) { if (!r && bizKey_(v['BUSINESS']) === b && lower_(v['ACTIVE']) !== 'no' && vendorKey_(v['NAME']) === vk) r = v; });
+    if (r) id = norm_(r['ID']);
+  }
+  if (r) writeRow_('Vendors', r._row, rec);
+  else { rec['ID'] = id; rec['BUSINESS'] = bizKey_(a.business); rec['CREATED'] = now_().toISOString(); append_('Vendors', rec); }
+  return { ok: true, id: id };
+}
+function archiveVendor_(a, me) {
+  mustManage_(me);
+  var r = findBy_('Vendors', 'ID', a.id);
+  if (r) writeRow_('Vendors', r._row, { 'ACTIVE': 'NO' });
+  return { ok: true };
+}
+
+/* ---- money in and out of the bank that isn't a sale or an expense ---- */
+
+function saveBankTx_(a, me) {
+  mustManage_(me);
+  var type = norm_(a.type);
+  if (!BANKING_TYPES[type]) throw new Error('Pick what kind of entry this is.');
+  var amt = r2_(a.amount);
+  if (amt <= 0) throw new Error('Enter the amount.');
+  var id = norm_(a.id) || Utilities.getUuid(), existing = findBy_('Banking', 'ID', id);
+  var b = bizKey_(existing ? existing['BUSINESS'] : a.business);
+  var bank = bankFor_(a.bank, b), to = type === 'transfer' ? bankFor_(a.toBank, b) : '';
+  if (!bank) throw new Error('Pick the bank account.');
+  if (type === 'transfer' && (!to || to === bank)) throw new Error('Pick the account the money went to.');
+  var rec = { 'TYPE': type, 'DATE': norm_(a.date) || dstr_(now_()), 'AMOUNT': amt, 'BANK': bank, 'TO BANK': to,
+    'PERSON': norm_(a.person).slice(0, 100), 'NOTE': norm_(a.note).slice(0, 500) };
+  if (existing) { if (lower_(existing['DELETED']) === 'yes') return { ok: true }; writeRow_('Banking', existing._row, rec); }
+  else {
+    rec['ID'] = id; rec['BUSINESS'] = b; rec['WHO'] = me.name; rec['CREATED'] = now_().toISOString(); rec['DELETED'] = '';
+    append_('Banking', rec);
+    log_(me.name, BANKING_TYPES[type], 'Bank', '', '', '', String(amt), BUSINESSES[b].defaults.name);
+  }
+  return { ok: true, id: id };
+}
+function deleteBankTx_(a, me) {
+  mustManage_(me);
+  var r = findBy_('Banking', 'ID', a.id);
+  if (r) writeRow_('Banking', r._row, { 'DELETED': 'YES' });
+  return { ok: true };
+}
+/** Move a customer payment to a different account (or to "not deposited yet"). */
+function setPaymentBank_(a, me) {
+  mustManage_(me);
+  var p = findBy_('Payments', 'ID', a.id);
+  if (!p) throw new Error('Payment not found.');
+  var inv = docRow_(norm_(p['INVOICE']));
+  writeRow_('Payments', p._row, { 'BANK': bankFor_(a.bank, bizKey_(inv ? inv['BUSINESS'] : '')) });
+  return { ok: true };
+}
+
+/* ---- check photos ---- */
+
+function fileCheck_(fileId, business, rec, existing) {
+  try {
+    var get = function (k) { return rec[k] !== undefined ? rec[k] : (existing ? existing[k] : ''); };
+    var f = DriveApp.getFileById(fileId);
+    var label = ['Check', get('CHECK NO') ? '#' + norm_(get('CHECK NO')) : '', dstr_(get('DATE')), norm_(get('VENDOR')), '$' + r2_(get('AMOUNT')).toFixed(2)]
+      .filter(String).join(' ').replace(/[\\/:*?"<>|]+/g, '');
+    f.setName(label + '.jpg');
+    f.moveTo(receiptsFolder_(business, dstr_(get('DATE'))));
+    return f.getUrl();
+  } catch (e) { return ''; }
+}
+
+var NUM_WORDS = { zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12,
+  thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30, forty:40,
+  fourty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90 };
+/** "Three thousand two hundred fifty and 00/100" -> 3250. 0 when it can't tell. */
+function wordsAmount_(line) {
+  var l = lower_(line).replace(/-/g, ' '), cents = 0, m = l.match(/(\d{1,2})\s*\/\s*100/);
+  if (m) cents = Number(m[1]) / 100;
+  var words = l.replace(/\d{1,2}\s*\/\s*100.*$/, '').replace(/[^a-z ]/g, ' ').split(/\s+/).filter(String);
+  var total = 0, cur = 0, seen = false;
+  words.forEach(function (w) {
+    if (NUM_WORDS.hasOwnProperty(w)) { cur += NUM_WORDS[w]; seen = true; }
+    else if (w === 'hundred') { cur = (cur || 1) * 100; seen = true; }
+    else if (w === 'thousand') { total += (cur || 1) * 1000; cur = 0; seen = true; }
+  });
+  return seen ? r2_(total + cur + cents) : 0;
+}
+
+/** Pull check number, date, payee, amount and memo out of a check photo's text. Best guess; the person confirms. */
+function parseCheck_(text) {
+  var out = { checkNo: '', date: '', payee: '', amount: 0, memo: '' };
+  var t = String(text || '').replace(/\r/g, '');
+  if (!t.trim()) return out;
+  var lines = t.split('\n').map(function (l) { return l.trim(); }).filter(String);
+  out.date = parseReceipt_(t).date;
+
+  // payee: after "pay to the order of"
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/(?:pay\s*to\s*the\s*order\s*of|order\s*of|pay\s*to)\s*[:\-]?\s*(.*)$/i);
+    if (m) {
+      var p = m[1].replace(/\$.*$/, '').replace(/[\d,]+\.\d{2}.*$/, '').replace(/[^\w&'.,\- ]/g, '').trim();
+      if (!p && i + 1 < lines.length) p = lines[i + 1].replace(/\$.*$/, '').replace(/[^\w&'.,\- ]/g, '').trim();
+      out.payee = p.slice(0, 80); break;
+    }
+  }
+  // amount: the $ box first, then the written-out line
+  var dollars = /\$\s*([\d,]+(?:\.\d{2})?)|(?:^|\s)\**([\d]{1,3}(?:,\d{3})*\.\d{2})\b/g, mm, best = 0;
+  while ((mm = dollars.exec(t))) { var v = Number(String(mm[1] || mm[2]).replace(/,/g, '')); if (v > 0 && v < 1000000 && (mm[1] || !best)) best = mm[1] ? v : (best || v); }
+  var worded = 0;
+  for (var j = 0; j < lines.length; j++) if (/\/\s*100|dollars/i.test(lines[j])) { worded = wordsAmount_(lines[j]); if (worded) break; }
+  out.amount = r2_(best || worded);
+  out.amountWords = worded;
+
+  // memo
+  for (var k = 0; k < lines.length; k++) {
+    var mo = lines[k].match(/^(?:memo|for)\s*[:\-]?\s*(.+)$/i);
+    if (mo && !/^\W*$/.test(mo[1])) { out.memo = mo[1].replace(/[⑆⑈⑇⑉]/g, '').trim().slice(0, 100); break; }
+  }
+
+  // check number: a short number printed top-right that also shows up in the bank line at the bottom
+  var nums = function (l) { return (l.replace(/[⑆⑈⑇⑉:;|]/g, ' ').match(/\b\d{3,6}\b/g) || []).map(function (n) { return String(Number(n)); }); };
+  var bottom = lines.slice(-2).join(' '), botNums = nums(bottom), cand = [];
+  lines.slice(0, Math.min(6, lines.length)).forEach(function (l) {
+    if (/\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\$|\.\d{2}\b|\d{3}[-.)\s]\d{3}[-.\s]\d{4}|\b(tx|texas|houston|suite|ste|street|st\.|rd|ave|blvd|dr)\b/i.test(l)) return;
+    nums(l).forEach(function (n) { cand.push(n); });
+  });
+  var both = cand.filter(function (n) { return botNums.indexOf(n) >= 0; });
+  out.checkNo = both[0] || cand[0] || '';
+  if (!out.checkNo && botNums.length) {                       // MICR: routing (9), account, check number — the short one
+    var shortOnes = botNums.filter(function (n) { return n.length >= 3 && n.length <= 5; });
+    out.checkNo = shortOnes[shortOnes.length - 1] || '';
+  }
+  return out;
+}
+
+/** Expenses this check probably pays: same amount, close in date, no check recorded yet. */
+function checkMatches_(business, amount, date, payee, excludeId) {
+  var amt = r2_(amount); if (!amt) return [];
+  var t = date ? new Date(date).getTime() : NaN, pk = vendorKey_(payee), out = [];
+  rows_('Expenses').forEach(function (x) {
+    if (lower_(x['DELETED']) === 'yes' || bizKey_(x['BUSINESS']) !== business || norm_(x['ID']) === norm_(excludeId) || norm_(x['CHECK NO'])) return;
+    if (Math.abs(num_(x['AMOUNT']) - amt) >= 0.005) return;
+    var xt = new Date(dstr_(x['DATE'])).getTime(), days = isNaN(t) || isNaN(xt) ? 0 : Math.abs(xt - t) / 864e5;
+    if (days > 60) return;
+    var o = expenseOut_(x); o.score = (pk && vendorKey_(x['VENDOR']) === pk ? 2 : 0) + (days <= 7 ? 1 : 0); out.push(o);
+  });
+  return out.sort(function (a, b) { return b.score - a.score; }).slice(0, 5);
+}
+function sameCheckNo_(business, bank, checkNo, excludeId) {
+  checkNo = norm_(checkNo).replace(/^#/, ''); if (!checkNo) return [];
+  return rows_('Expenses').filter(function (x) {
+    return lower_(x['DELETED']) !== 'yes' && bizKey_(x['BUSINESS']) === business && norm_(x['ID']) !== norm_(excludeId) &&
+      norm_(x['CHECK NO']) === checkNo && (!bank || !norm_(x['BANK']) || norm_(x['BANK']) === bank);
+  }).map(expenseOut_);
+}
+
+/** Save the check photo to Drive, read it, and find what it pays. */
+function scanCheck_(a, me) {
+  mustManage_(me);
+  var img = a.image || {};
+  if (!img.data) throw new Error('No photo received.');
+  var b = bizKey_(a.business);
+  var blob = Utilities.newBlob(Utilities.base64Decode(img.data), img.type || 'image/jpeg',
+    'Check ' + dstr_(now_()) + ' ' + Utilities.formatDate(now_(), Session.getScriptTimeZone(), 'HHmmss') + '.jpg');
+  var text = ocr_(blob), p = parseCheck_(text);
+  var file = receiptsFolder_(b, p.date || dstr_(now_())).createFile(blob);
+  var vendor = p.payee, best = '';
+  if (p.payee) {                                               // tidy the payee to a saved vendor name when it's close
+    var pk = vendorKey_(p.payee);
+    rows_('Vendors').concat(rows_('Expenses')).forEach(function (v) {
+      var n = norm_(v['NAME'] || v['VENDOR']);
+      if (!best && bizKey_(v['BUSINESS']) === b && n && pk && (vendorKey_(n) === pk || vendorKey_(n).indexOf(pk.slice(0, 6)) === 0)) best = n;
+    });
+    if (best) vendor = best;
+  }
+  return { fileId: file.getId(), link: file.getUrl(), text: text.slice(0, 3000), read: !!text,
+           checkNo: p.checkNo, date: p.date, payee: vendor, amount: p.amount, amountWords: p.amountWords || 0, memo: p.memo,
+           account: lastAccountFor_(b, vendor),
+           matches: checkMatches_(b, p.amount, p.date, vendor, a.id), sameNumber: sameCheckNo_(b, norm_(a.bank), p.checkNo, a.id) };
+}
+
+/* ---- bring in expenses tracked somewhere else (e.g. a job's own sheet) ---- */
+
+function importExpenses_(a, me) {
+  mustManage_(me);
+  var b = bizKey_(a.business), list = Array.isArray(a.rows) ? a.rows.slice(0, 500) : [];
+  var seen = {};
+  rows_('Expenses').forEach(function (x) {
+    if (lower_(x['DELETED']) !== 'yes' && bizKey_(x['BUSINESS']) === b)
+      seen[[dstr_(x['DATE']), vendorKey_(x['VENDOR']), r2_(x['AMOUNT']).toFixed(2), lower_(x['NOTE']).slice(0, 24)].join('|')] = 1;
+  });
+  var added = 0, skipped = 0;
+  list.forEach(function (r) {
+    var amt = r2_(r.amount);
+    if (!amt) { skipped++; return; }
+    var key = [norm_(r.date), vendorKey_(r.vendor), amt.toFixed(2), lower_(r.note).slice(0, 24)].join('|');
+    if (seen[key]) { skipped++; return; }
+    seen[key] = 1;
+    var link = norm_(r.link);
+    var clink = norm_(r.checkLink);
+    append_('Expenses', {
+      'ID': Utilities.getUuid(), 'BUSINESS': b, 'STATUS': 'Booked', 'DATE': norm_(r.date), 'VENDOR': norm_(r.vendor).slice(0, 200),
+      'ACCOUNT': accountName_(r.account) || 'Other expenses', 'AMOUNT': amt, 'METHOD': norm_(r.method).slice(0, 50),
+      'JOB': norm_(r.job), 'NOTE': norm_(r.note).slice(0, 1000), 'RECEIPT': '', 'RECEIPT LINK': link,
+      'BANK': r.bank ? bankFor_(r.bank, b) : '', 'PAID BY': r.bank ? '' : norm_(r.paidBy).slice(0, 100),
+      'CHECK NO': norm_(r.checkNo), 'CHECK FILE': '', 'CHECK LINK': clink,
+      'HASH': '', 'DUP OF': 'CLEARED', 'SCANNED': '', 'CREATED BY': me.name, 'CREATED': now_().toISOString(),
+      'UPDATED': now_().toISOString(), 'DELETED': ''
+    });
+    added++;
+  });
+  log_(me.name, 'Imported expenses', 'Expense', String(added), '', '', '', norm_(a.source).slice(0, 100));
+  return { ok: true, added: added, skipped: skipped };
+}
+
+/* ---- keep older sheets up to date: new columns, and the Uribest checking account ---- */
+
+function migrate_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('SCHEMA') === VERSION) return;
+  for (var t in TABS) { tab_(t); ensureHeaders_(t); }
+  if (!props.getProperty('SEED_BANKS')) {
+    if (!rows_('Banks').some(function (r) { return bizKey_(r['BUSINESS']) === 'uribest'; })) {
+      append_('Banks', { 'ID': Utilities.getUuid(), 'BUSINESS': 'uribest', 'NAME': 'Uribest checking', 'TYPE': 'checking',
+        'INSTITUTION': 'Houston Texas Firefighters FCU', 'LAST4': '1882', 'OPENING BALANCE': '', 'OPENING DATE': '', 'ACTIVE': 'YES',
+        'CREATED': now_().toISOString() });
+    }
+    props.setProperty('SEED_BANKS', '1');
+  }
+  props.setProperty('SCHEMA', VERSION);
 }
 
 /* ---- read ---- */
@@ -1193,7 +1488,7 @@ function business_(allowed) {
   var payments = rows_('Payments').filter(function (p) { return lower_(p['DELETED']) !== 'yes' && norm_(p['ID']); })
     .map(function (p) {
       return { id: norm_(p['ID']), invoice: norm_(p['INVOICE']), date: dstr_(p['DATE']), amount: num_(p['AMOUNT']),
-               method: norm_(p['METHOD']), note: norm_(p['NOTE']), who: norm_(p['WHO']) };
+               method: norm_(p['METHOD']), note: norm_(p['NOTE']), who: norm_(p['WHO']), bank: norm_(p['BANK']) };
     });
   customers = customers.filter(ok); services = services.filter(ok); docs = docs.filter(ok);
   var docIds = {}; docs.forEach(function (d) { docIds[d.id] = 1; });
@@ -1202,20 +1497,30 @@ function business_(allowed) {
   expenses.forEach(function (x) { if (x.dupOf === 'CLEARED') x.dupOf = ''; });
   var co = company_(), coOut = {};
   allowed.forEach(function (b) { coOut[b] = co[b]; });
+  var banks = rows_('Banks').filter(function (r) { return norm_(r['ID']); }).map(bankOut_).filter(ok);
+  var vendors = rows_('Vendors').filter(function (v) { return norm_(v['ID']) && lower_(v['ACTIVE']) !== 'no'; })
+    .map(function (v) { return { id: norm_(v['ID']), business: bizKey_(v['BUSINESS']), name: norm_(v['NAME']), type: norm_(v['TYPE']) || 'vendor',
+                                 phone: norm_(v['PHONE']), email: norm_(v['EMAIL']), notes: norm_(v['NOTES']) }; }).filter(ok);
+  var banking = rows_('Banking').filter(function (x) { return norm_(x['ID']) && lower_(x['DELETED']) !== 'yes'; })
+    .map(function (x) { return { id: norm_(x['ID']), business: bizKey_(x['BUSINESS']), type: norm_(x['TYPE']), date: dstr_(x['DATE']),
+                                 amount: num_(x['AMOUNT']), bank: norm_(x['BANK']), toBank: norm_(x['TO BANK']), person: norm_(x['PERSON']),
+                                 note: norm_(x['NOTE']), who: norm_(x['WHO']), created: norm_(x['CREATED']) }; }).filter(ok);
   return { company: coOut, businesses: allowed, customers: customers, services: services, docs: docs, payments: payments,
-           expenses: expenses, accounts: ACCOUNTS };
+           expenses: expenses, accounts: ACCOUNTS, banks: banks, vendors: vendors, banking: banking, bankingTypes: BANKING_TYPES };
 }
 
 /* --------------------------------------------------------------- routing */
 
 var PUBLIC = { requestCode: requestCode_, verifyCode: verifyCode_ };
 var BIZ_FNS = { saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1, saveDoc:1, setDocStatus:1,
-                deleteDoc:1, addPayment:1, deletePayment:1, saveExpense:1, deleteExpense:1, getReceipt:1, scanReceipt:1 };
+                deleteDoc:1, addPayment:1, deletePayment:1, saveExpense:1, deleteExpense:1, getReceipt:1, scanReceipt:1,
+                saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, scanCheck:1, importExpenses:1 };
 var NEEDS_ID = { addTool:1, moveTool:1, setToolStatus:1, addPart:1, setLowTarget:1,
                  adjustStock:1, transferStock:1, addLocation:1, archiveLocation:1, bulkImport:1,
                  saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1,
                  saveDoc:1, setDocStatus:1, deleteDoc:1, addPayment:1, deletePayment:1,
-                 saveExpense:1, deleteExpense:1 };
+                 saveExpense:1, deleteExpense:1,
+                 saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, importExpenses:1 };
 
 function handlers_() {
   return {
@@ -1230,7 +1535,9 @@ function handlers_() {
     saveService: saveService_, archiveService: archiveService_,
     saveDoc: saveDoc_, setDocStatus: setDocStatus_, deleteDoc: deleteDoc_,
     addPayment: addPayment_, deletePayment: deletePayment_,
-    saveExpense: saveExpense_, deleteExpense: deleteExpense_, getReceipt: getReceipt_, scanReceipt: scanReceipt_
+    saveExpense: saveExpense_, deleteExpense: deleteExpense_, getReceipt: getReceipt_, scanReceipt: scanReceipt_,
+    saveBank: saveBank_, saveVendor: saveVendor_, archiveVendor: archiveVendor_, saveBankTx: saveBankTx_, deleteBankTx: deleteBankTx_,
+    setPaymentBank: setPaymentBank_, scanCheck: scanCheck_, importExpenses: importExpenses_
   };
 }
 
@@ -1239,7 +1546,13 @@ function bizOfCall_(fn, a) {
   a = a || {};
   var rowBiz = function (tab, id) { var r = id ? findBy_(tab, 'ID', id) : null; return r ? bizKey_(r['BUSINESS']) : ''; };
   switch (fn) {
-    case 'saveCompany': case 'scanReceipt': return bizKey_(a.business);
+    case 'saveCompany': case 'scanReceipt': case 'scanCheck': case 'importExpenses': return bizKey_(a.business);
+    case 'saveBank': return rowBiz('Banks', a.id) || bizKey_(a.business);
+    case 'saveVendor': return rowBiz('Vendors', a.id) || bizKey_(a.business);
+    case 'archiveVendor': return rowBiz('Vendors', a.id);
+    case 'saveBankTx': return rowBiz('Banking', a.id) || bizKey_(a.business);
+    case 'deleteBankTx': return rowBiz('Banking', a.id);
+    case 'setPaymentBank': var pp = findBy_('Payments', 'ID', a.id); return pp ? rowBiz('Docs', norm_(pp['INVOICE'])) : '';
     case 'saveCustomer': return rowBiz('Customers', a.id) || bizKey_(a.business);
     case 'archiveCustomer': return rowBiz('Customers', a.id);
     case 'saveService': return rowBiz('Services', a.id) || bizKey_(a.business);
@@ -1256,6 +1569,13 @@ function bizOfCall_(fn, a) {
   return '';
 }
 
+function runMigrate_() {
+  if (PropertiesService.getScriptProperties().getProperty('SCHEMA') === VERSION) return;
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return;
+  try { migrate_(); } finally { lock.releaseLock(); }
+}
+
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
@@ -1265,6 +1585,7 @@ function doGet(e) {
   if (e && e.parameter && e.parameter.ping) {
     var health = {};
     try {
+      runMigrate_();
       for (var t in TABS) health[t] = Math.max(0, tab_(t).getLastRow() - 1);
     } catch (err) { return json_({ ok: false, version: VERSION, error: String(err) }); }
     return json_({ ok: true, version: VERSION, sheet: ss_().getName(), rows: health, time: now_().toISOString() });
@@ -1284,6 +1605,7 @@ function doPost(e) {
 
     var me = session_(token);
     if (!me) return json_({ ok: false, code: 'AUTH', error: 'Please sign in again.' });
+    runMigrate_();
 
     var h = handlers_()[fn];
     if (!h) return json_({ ok: false, error: 'Unknown action.' });
@@ -1325,6 +1647,7 @@ function doPost(e) {
 /* ------------------------------------------------- one-time sheet set-up */
 
 function setup() {
+  migrate_();
   for (var t in TABS) { tab_(t); ensureHeaders_(t); }
   if (rows_('Team').length === 0) {
     append_('Team', { 'EMAIL': 'ricardo@uffgconstruction.com', 'NAME': 'Ricardo Uribe',
