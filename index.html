@@ -245,6 +245,13 @@ label.check input{width:auto;margin:0}
 .vstage{flex:1;position:relative;overflow:hidden;touch-action:none}
 #vImg{position:absolute;left:50%;top:50%;max-width:100%;max-height:100%;transform-origin:center center;user-select:none;-webkit-user-drag:none;will-change:transform}
 .vhint{text-align:center;font-size:.74rem;opacity:.6;padding:6px 0 calc(env(safe-area-inset-bottom) + 8px)}
+.splitleft{border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:.88rem;font-weight:600}
+.splitleft.ok{background:#E2EFE7;color:var(--green-d)}
+.splitleft.off{background:#FBEFE6;color:#7A3B12}
+.splitleft .link{padding:0 0 0 6px;font-size:.84rem}
+.spart{padding:12px}
+.spart .field{margin-bottom:8px}
+.spthumb{display:block;max-height:140px;max-width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:10px;cursor:zoom-in}
 /* v2.6: budgets */
 .bbar{height:7px;background:var(--cream);border-radius:4px;overflow:hidden;margin:6px 0 2px}
 .bbar i{display:block;height:100%;background:var(--green);border-radius:4px}
@@ -347,7 +354,7 @@ label.check input{width:auto;margin:0}
 const $  = s => document.querySelector(s);
 const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const APP_VERSION = '2.6.4';
+const APP_VERSION = '2.7.0';
 const uid = () => (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
 const LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -1930,11 +1937,12 @@ function vExpenses(v) {
 }
 
 function expenseCard(x) {
-  const flags = (x.status === 'Review' ? '<span class="pill warn">Review</span>' : '') + (x.dupOf ? '<span class="pill bad">Possible duplicate</span>' : '');
+  const flags = (x.status === 'Review' ? '<span class="pill warn">Review</span>' : '') + (x.dupOf ? '<span class="pill bad">Possible duplicate</span>' : '') +
+    (x.split ? '<span class="pill">Split</span>' : '');
   return card(`<div class="row"><div class="grow"><div class="ttl">${esc(x.vendor || 'Unknown vendor')}${x.receipt ? ' <span class="clip" title="Receipt saved">📎</span>' : ''}</div>
     <div class="meta">${esc([x.account ? acctLabel(x.account) : 'No account', jobLabel(x.job), x.checkNo ? 'Check #' + x.checkNo : x.method, !x.bank && x.paidBy ? 'paid by ' + x.paidBy : ''].filter(Boolean).join(' · '))}</div>
     ${x.status === 'Review' ? `<div class="meta">${esc(fmtDate(x.date))}</div>` : ''}
-    ${x.note ? `<div class="meta clamp">${esc(x.note)}</div>` : ''}</div><div class="rcol"><div class="amt ${x.amount < 0 ? 'pos' : ''}">${x.amount ? money(x.amount) : '—'}</div>${flags}</div></div>`, () => expenseSheet(x));
+    ${x.note ? `<div class="meta clamp">${esc(x.note)}</div>` : ''}</div><div class="rcol"><div class="amt ${x.amount < 0 ? 'pos' : ''}">${x.amount ? money(x.amount) : '—'}</div>${flags}</div></div>`, () => x.split ? splitSheet(x) : expenseSheet(x));
 }
 
 function shrinkImage(file, max, q) {
@@ -2000,6 +2008,7 @@ async function bulkUpload(files) {
 /* ---- one expense: add, review, edit ---- */
 function expenseSheet(x, presetJob, opts) {
   opts = opts || {};
+  if (x && x.split) return splitSheet(x);           // a split receipt is edited as a whole
   const isNew = !x;
   x = x ? clone(x) : { id: uid(), business: BIZ, status: 'Booked', date: today(), vendor: '', account: '', amount: 0, method: 'Card', job: presetJob || '', note: '', receipt: false,
                        bank: opts.bank || '', paidBy: opts.bank ? '' : acting().name, checkNo: '' };
@@ -2034,6 +2043,14 @@ function expenseSheet(x, presetJob, opts) {
   const more = reviewing && nextDraft();
   if (more) acts.appendChild(btn('Book & review next →', () => save(true)));
   acts.appendChild(btn(reviewing ? 'Book expense' : (isNew ? 'Save expense' : 'Save'), () => save(false), more ? 'ghost' : ''));
+  if (!isNew) acts.appendChild(btn('✂ Split into parts', () => {
+    if (busy) return toast('Still reading the receipt — one sec.', true);
+    if (pending || scanned || removeReceipt) return toast('Save the new photo first, then split.', true);
+    const form = { amount: r2($('#xam').value), account: $('#xac').value, job: $('#xjb').value, note: $('#xnt').value.trim(), vendor: $('#xvn').value.trim(),
+      date: $('#xdt').value || x.date, method: $('#xmt').value, bank: $('#xbk').value, paidBy: $('#xbk').value ? '' : $('#xpb').value.trim(),
+      checkNo: $('#xmt').value === 'Check' ? $('#xck').value.trim().replace(/^#/, '') : (x.checkNo || '') };
+    closeSheet(); setTimeout(() => splitSheet(x, form), 250);
+  }, 'ghost'));
   if (more) acts.appendChild(btn('Skip — review the next one', () => { closeSheet(); setTimeout(() => expenseSheet(nextDraft()), 250); }, 'ghost'));
   function save(next) {
     if (busy) return toast('Still reading the receipt — one sec.', true);
@@ -2229,6 +2246,109 @@ function jobCostsSection(v, d) {
   g2.appendChild(btn('Set a budget', () => go('budget', jobDoc(d).id), 'ghost'));
   c.appendChild(g2);
   v.appendChild(c);
+}
+
+/* ===================== split one receipt into parts (v2.7) ===================== */
+/* Each part is its own expense line (own account, project, note) sharing the receipt, vendor, date and payment. */
+function splitSheet(x, form) {
+  form = form || {};
+  const group = x.split || '';
+  const sibs = group ? expensesAll().filter(e => e.split === group) : [x];
+  const first = group ? (sibs.slice().sort((a, b) => (a.created || '').localeCompare(b.created || ''))[0] || x) : x;
+  const shared = {
+    date: form.date || first.date, vendor: form.vendor != null ? form.vendor : first.vendor, method: form.method || first.method,
+    bank: form.bank != null ? form.bank : (first.bank || ''), paidBy: form.paidBy != null ? form.paidBy : (first.paidBy || ''), checkNo: form.checkNo != null ? form.checkNo : (first.checkNo || '')
+  };
+  let parts = group
+    ? [first].concat(sibs.filter(e => e.id !== first.id)).map(e => ({ id: e.id, amount: e.amount, account: e.account, job: e.job, note: e.note }))
+    : [{ id: x.id, amount: r2(form.amount != null ? form.amount : x.amount), account: form.account != null ? form.account : x.account, job: form.job != null ? form.job : x.job, note: form.note != null ? form.note : x.note }];
+  let total = r2(group ? parts.reduce((s, p) => s + (Number(p.amount) || 0), 0) : parts[0].amount);
+  if (!group) { parts[0].amount = total; parts.push({ id: uid(), amount: 0, account: '', job: parts[0].job, note: '' }); }
+  const jobs = jobOptions();
+  const acctOpts = sel => '<option value="">Account…</option>' + ['cogs', 'expense'].map(t => `<optgroup label="${t === 'cogs' ? 'Job costs' : 'Overhead'}">` +
+    accounts().filter(a => a.type === t).map(a => `<option value="${esc(a.name)}" ${a.name === sel ? 'selected' : ''}>${esc(a.code + ' · ' + a.name)}</option>`).join('') + '</optgroup>').join('');
+  const jobOpts = sel => '<option value="">No project</option>' + jobs.map(j => `<option value="${esc(j.id)}" ${j.id === sel ? 'selected' : ''}>${esc(jobLabel(j.id))}</option>`).join('');
+
+  const f = el('div');
+  f.innerHTML = `<div class="meta" style="margin-bottom:8px">${esc([shared.vendor || 'Expense', fmtDate(shared.date), shared.checkNo ? 'Check #' + shared.checkNo : shared.method].filter(Boolean).join(' · '))}</div>
+    <div id="spRc"></div>
+    ${field('Receipt total $', `<input id="spTot" class="money" type="number" inputmode="decimal" step="0.01" value="${total || ''}">`)}
+    <div id="spParts"></div>
+    <button type="button" class="btn ghost wide" id="spAdd" style="margin-bottom:10px">+ Add a part</button>
+    <div class="splitleft" id="spLeft"></div>`;
+  const acts = el('div', 'actions');
+  acts.appendChild(btn('Save split', save));
+  f.appendChild(acts);
+  openSheet('Split ' + (shared.vendor || 'expense') + ' · ' + BIZ_NAMES[x.business || BIZ], f);
+
+  // receipt: small, tap to zoom
+  const rcBox = $('#spRc');
+  const paintRc = () => {
+    const src = RECEIPTS[first.id] || RECEIPTS[x.id];
+    rcBox.innerHTML = '';
+    if (src) { const im = el('img', 'spthumb'); im.src = src; im.onclick = () => openViewer(src, shared.vendor || 'Receipt'); rcBox.appendChild(im); return; }
+    if (first.file || x.file) rcBox.appendChild(btn('🔍 View receipt', async e => {
+      const t = e.target; t.disabled = true; t.textContent = 'Loading…';
+      try { const r = await call('getReceipt', { id: first.id }); RECEIPTS[first.id] = 'data:' + r.type + ';base64,' + r.data; paintRc(); openViewer(RECEIPTS[first.id], shared.vendor || 'Receipt'); }
+      catch (err) { toast(err.message, true); t.disabled = false; t.textContent = '🔍 View receipt'; }
+    }, 'ghost sm'));
+    else if (first.link || x.link) rcBox.appendChild(btn('Open receipt in Drive', () => window.open(first.link || x.link, '_blank'), 'ghost sm'));
+  };
+  paintRc();
+
+  const box = $('#spParts');
+  const left = () => r2(total - parts.reduce((s, p) => s + (Number(p.amount) || 0), 0));
+  function paintLeft() {
+    const l = left(), n = $('#spLeft');
+    n.className = 'splitleft ' + (Math.abs(l) < 0.005 ? 'ok' : 'off');
+    n.innerHTML = Math.abs(l) < 0.005 ? `✓ Parts add up to ${money(total)}` : `${money(Math.abs(l))} ${l > 0 ? 'left to assign' : 'over the total'}` +
+      (l > 0 ? ` <button type="button" class="link" id="spFill">Put it on the last part</button>` : '');
+    const fill = $('#spFill'); if (fill) fill.onclick = () => { const p = parts[parts.length - 1]; p.amount = r2((Number(p.amount) || 0) + l); paint(); };
+  }
+  function paint() {
+    box.innerHTML = '';
+    parts.forEach((p, i) => {
+      const c = el('div', 'card spart');
+      c.innerHTML = `<div class="row"><b class="grow">Part ${i + 1}</b>${i ? '<button type="button" class="link dangertext sprm">Remove</button>' : ''}</div>
+        <div class="grid2">${field('Amount $', `<input class="spam" type="number" inputmode="decimal" step="0.01" value="${p.amount || ''}" placeholder="0.00">`)}
+        ${field('Account', `<select class="spac">${acctOpts(p.account)}</select>`)}</div>
+        ${field('Project', `<select class="spjb">${jobOpts(p.job)}</select>`)}
+        <input class="spnt" value="${esc(p.note || '')}" placeholder="What this part was (e.g. lanyards)">`;
+      c.querySelector('.spam').oninput = e => { p.amount = r2(e.target.value); paintLeft(); };
+      c.querySelector('.spac').onchange = e => { p.account = e.target.value; };
+      c.querySelector('.spjb').onchange = e => { p.job = e.target.value; };
+      c.querySelector('.spnt').oninput = e => { p.note = e.target.value; };
+      const rm = c.querySelector('.sprm'); if (rm) rm.onclick = () => { parts.splice(i, 1); paint(); };
+      box.appendChild(c);
+    });
+    paintLeft();
+  }
+  $('#spTot').oninput = e => { total = r2(e.target.value); paintLeft(); };
+  $('#spAdd').onclick = () => { parts.push({ id: uid(), amount: Math.max(0, left()), account: '', job: parts[0].job, note: '' }); paint(); };
+  paint();
+
+  function save() {
+    const use = parts.filter((p, i) => i === 0 || Number(p.amount));
+    if (!total) return toast('Enter the receipt total.', true);
+    if (Math.abs(left()) >= 0.005 && use.length === parts.length) return toast('The parts need to add up to ' + money(total) + '.', true);
+    const l2 = r2(total - use.reduce((s, p) => s + (Number(p.amount) || 0), 0));
+    if (Math.abs(l2) >= 0.005) return toast('The parts need to add up to ' + money(total) + '.', true);
+    const bad = use.findIndex(p => !Number(p.amount) || !p.account);
+    if (bad >= 0) return toast('Part ' + (bad + 1) + ' needs an amount and an account.', true);
+    const grp = use.length > 1 ? (group || uid()) : '';
+    const keep = new Set(use.map(p => p.id));
+    // update this phone right away
+    biz().expenses = expensesAll().filter(e => !(group && e.split === group && !keep.has(e.id)));
+    use.forEach(p => {
+      const base = expensesAll().find(e => e.id === p.id) || clone(first);
+      upsertLocal(biz().expenses, Object.assign(clone(base), shared, p, { id: p.id, status: 'Booked', split: grp, dupOf: '', hash: base.id === first.id ? base.hash : '',
+        created: base.created || new Date().toISOString() }));
+    });
+    saveLocal();
+    enqueue('saveSplit', { business: x.business || BIZ, group: grp, shared, parts: use.map(p => ({ id: p.id, amount: r2(p.amount), account: p.account, job: p.job || '', note: (p.note || '').trim() })) },
+      'Split ' + (shared.vendor || 'expense'));
+    closeSheet(); toast(use.length > 1 ? 'Split into ' + use.length + ' parts' : 'Saved as one expense'); render();
+  }
 }
 
 /* ===================== job budgets vs actuals (v2.6) ===================== */
