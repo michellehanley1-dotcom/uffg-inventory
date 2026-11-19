@@ -272,6 +272,9 @@ label.check input{width:auto;margin:0}
 .tabs,.docbar,.sheet{bottom:calc(-1 * var(--gap))}
 .tabs::after,.docbar::after{content:'';position:absolute;left:0;right:0;top:100%;height:240px;background:#fff}
 /* sit the labels where iPhone's own tab bars do: just above the home bar, not a full inset higher */
+/* The bars only land right when the page is at least as tall as the screen (Expenses always is), so make every page at least that tall. */
+#app main,#auth main{min-height:calc(100vh + 2px)}
+@supports (height:100lvh){#app main,#auth main{min-height:calc(100lvh + 2px)}}
 .tabs{padding-bottom:max(6px, calc(env(safe-area-inset-bottom) - 14px))}
 .tabs button{padding-bottom:5px}
 .docbar{padding-bottom:max(10px, calc(env(safe-area-inset-bottom) - 8px))}
