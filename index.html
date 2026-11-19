@@ -122,6 +122,107 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);b
 .logline{border-bottom:1px solid var(--line);padding:9px 0;font-size:.85rem}
 .logline:last-child{border-bottom:0}
 .logline .w{color:var(--mut);font-size:.76rem}
+
+/* ---------- v2: nav, business screens ---------- */
+.tabs svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs button{font-size:.6rem;letter-spacing:.04em}
+.backbtn{background:none;border:0;color:#fff;font-size:2rem;line-height:1;padding:0 8px 4px 0;cursor:pointer}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--cream);border-radius:9px;padding:3px;margin-bottom:12px}
+.seg button{background:none;border:0;border-radius:7px;padding:8px 4px;font-size:.84rem;font-weight:600;color:var(--mut);cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.card.tap{cursor:pointer}
+.card.tap:active{background:var(--cream2)}
+.chev{color:var(--mut);font-size:1.4rem;line-height:1}
+.gap{height:14px}
+.big{font-size:1.25rem;font-weight:700;line-height:1.2}
+.kicker{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green)}
+.amt{font-weight:700;white-space:nowrap;text-align:right}
+.rcol{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.r{text-align:right}
+.note{background:var(--cream2);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.85rem;white-space:pre-line}
+.quick{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.qbtn{flex:1;min-width:64px;text-align:center;text-decoration:none;color:var(--green-d);background:var(--cream);border-radius:8px;padding:9px 6px;font-weight:600;font-size:.85rem}
+.balbar{display:flex;justify-content:space-between}
+.empty.sm{padding:12px;font-size:.85rem}
+.pill.grey{background:#ECEDEF;color:#4A5058}
+.pill.good{background:#DDEEE3;color:var(--green-d)}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.lines .line{padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.lines .line:first-child{padding-top:2px}
+.lines .line.head .ttl{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--green-d)}
+.line.row{padding:8px 0;border-bottom:1px solid var(--line)}
+.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.trow{display:flex;justify-content:space-between;padding:5px 0;font-size:.92rem;color:var(--mut)}
+.trow span:last-child{color:var(--ink);font-variant-numeric:tabular-nums}
+.trow.big{font-weight:700;font-size:1.05rem;color:var(--ink);border-top:1px solid var(--line);margin-top:4px;padding-top:9px}
+.check{display:flex;align-items:center;gap:8px;font-size:.92rem;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:500;margin:4px 0 8px}
+.check input{width:20px;height:20px;padding:0}
+.linkish{color:var(--green);font-weight:600;cursor:pointer}
+.dangertext{color:var(--red)!important}
+.btn.sm{padding:9px 8px}
+a.btn{text-decoration:none}
+.stat div b{font-size:1.25rem}
+.docbar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid var(--line);
+  display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px)}
+body.indoc main{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+@media (min-width:700px){ main{max-width:720px;margin:0 auto} }
+
+/* ---------- v2.1: business switch + expenses ---------- */
+body[data-biz=uribest]{--green:#1F4FB4;--green-d:#173C8C;--green-deep:#0F2A66}
+body[data-biz=uribest] .ok{background:#E4EBF8;color:var(--green-d)}
+body[data-biz=uribest] .pill.good{background:#E1E9F8;color:var(--green-d)}
+body[data-biz=uribest] .seg,body[data-biz=uribest] .qbtn{background:#E9EEF7}
+body[data-biz=uribest] input:focus,body[data-biz=uribest] select:focus,body[data-biz=uribest] textarea:focus{box-shadow:0 0 0 3px rgba(31,79,180,.18)}
+.top{transition:background .2s}
+.topword{display:inline-flex;align-items:center;height:30px;color:#fff}
+.topword svg{height:15px;width:auto}
+.biztog{display:flex;background:rgba(255,255,255,.16);border-radius:20px;padding:3px;flex:0 0 auto}
+.biztog button{background:none;border:0;color:rgba(255,255,255,.85);font-size:.66rem;font-weight:700;letter-spacing:.06em;padding:6px 10px;border-radius:16px;cursor:pointer}
+.biztog button.on{background:#fff;color:var(--green-d)}
+.top h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs button{font-size:.56rem;letter-spacing:.02em;padding-left:1px;padding-right:1px}
+.cats{padding:10px 14px}
+.catrow{padding:6px 0;cursor:pointer;font-size:.88rem}
+.catrow .bar{height:6px;background:var(--cream);border-radius:3px;margin-top:4px;overflow:hidden}
+.catrow .bar i{display:block;height:100%;background:var(--green);border-radius:3px;opacity:.75}
+.catrow.on .bar i{opacity:1}
+.catrow.on{font-weight:700}
+.dhead{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:14px 2px 6px}
+.clip{font-size:.85rem}
+.receipt img{display:block;max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--line);margin-bottom:8px;cursor:zoom-in}
+.receipt{margin-bottom:12px}
+input.money{font-size:1.25rem;font-weight:700}
+.scanstat{font-size:.84rem;background:var(--cream2);border-radius:8px;padding:8px 10px;margin-bottom:8px;color:var(--green-d)}
+.scanstat.busy{color:var(--mut)}
+.scanstat.busy::before{content:'';display:inline-block;width:12px;height:12px;margin-right:8px;vertical-align:-1px;border:2px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.trow.neg span:last-child{color:var(--red)}
+
+/* ---------- v2.3: review, duplicates, accounts, P&L ---------- */
+.hint{font-size:.78rem;color:var(--mut);margin-top:5px;min-height:1px}
+.hint .link{padding:0;font-size:.78rem}
+.dupwarn{background:#FBEFE6;border:1px solid #EFC9AE;color:#7A3B12;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:.86rem}
+.dupwarn b{display:block;margin-bottom:2px}
+.dupwarn .btn{background:#fff}
+.dupwarn.tap{cursor:pointer}
+.catrow .bar i.cogs{background:var(--green)}
+.catrow .bar i.expense{background:#B07D1A}
+.legend{font-size:.72rem;color:var(--mut);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);vertical-align:-1px;margin-right:3px}
+.legend i.expense{background:#B07D1A;margin-left:8px}
+.stat .tap{cursor:pointer}
+.rcol .pill{margin-top:2px}
+.seg.two{grid-template-columns:1fr 1fr}
+.pnl .psec{font-size:.7rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--green);margin:16px 0 4px}
+.pnl .trow.tap{cursor:pointer}
+.pnl .trow.tap:active{background:var(--cream2)}
+.pnl .trow.sub1{border-top:1px solid var(--line);color:var(--ink);font-weight:600}
+.pnl .trow.big{background:var(--green);color:#fff;border-radius:8px;padding:9px 10px;margin:10px -4px 0;border:0}
+.pnl .trow.big span:last-child{color:#fff}
+.pnl .trow.big.total.neg{background:var(--red)}
+.pct{font-weight:500;opacity:.8;font-size:.85em;margin-left:4px}
+.negtext{color:var(--red)}
+.card.acting{border-color:var(--green);box-shadow:0 0 0 2px rgba(46,107,79,.15)}
 </style>
 </head>
 <body>
@@ -159,20 +260,21 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);b
 <!-- ============================== APP ============================== -->
 <section id="app" class="hide">
   <div class="top">
-    <img src="icons/icon-192.png" alt="">
+    <button class="backbtn hide" id="backBtn" aria-label="Back">‹</button>
+    <img src="icons/icon-192.png" alt="" id="topLogo">
+    <span class="topword hide" id="topWord" aria-label="Uribest"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 5191 722" fill="currentColor"><g transform="translate(0,722) scale(1,-1)"><path transform="translate(0.0,0)" d="M824 668V722H539V668C578 667 605 658 621 641C642 619 647 594 647 505V304C647 222 643 183 630 155C601 92 543 60 460 60C357 60 299 97 299 258V578C299 641 299 645 306 653C315 664 337 668 389 668H404V722H15V668H30C82 668 103 664 112 653C119 645 119 641 119 578V261C119 177 126 135 145 100C186 25 283 -15 424 -15C552 -15 629 19 678 96C706 141 714 186 714 304V505C714 593 719 619 740 641C756 658 784 667 824 668Z"/><path transform="translate(861.9,0)" d="M817 164H763C762 101 747 69 717 69C691 69 684 72 672 159L665 197C648 287 613 332 525 361C663 387 725 441 725 541C725 601 696 652 644 686C606 710 539 722 447 722H20V668H35C87 668 108 664 117 654C124 645 124 642 124 578V145C124 81 124 78 117 69C108 59 87 55 35 55H20V1H420V55H394C342 55 320 59 311 69C304 78 304 81 304 145V347H360C433 347 465 333 473 229C478 162 484 119 487 104C503 26 561 -15 647 -15C755 -15 817 58 817 164ZM534 536C534 434 492 402 359 402H304V604C304 661 311 668 375 668H399C492 668 534 627 534 536Z"/><path transform="translate(1705.8,0)" d="M417 0V54H402C350 54 328 58 319 69C312 77 312 80 312 144V578C312 642 312 645 319 653C328 664 350 668 402 668H417V722H28V668H43C95 668 116 664 125 653C132 645 132 641 132 578V144C132 81 132 77 125 69C116 58 95 54 43 54H28V0Z"/><path transform="translate(2178.6,0)" d="M736 189C736 291 655 360 506 380C641 402 703 454 703 545C703 602 673 654 624 682C569 713 522 722 403 722H17V668H32C84 668 105 664 114 654C121 645 121 642 121 578V144C121 81 121 77 114 69C105 58 84 54 32 54H17V0H422C525 0 579 7 630 30C694 58 736 122 736 189ZM522 541C522 454 479 398 350 398H301V610C301 664 325 668 357 668H387C475 668 522 624 522 541ZM545 200C545 108 495 54 392 54H362C307 54 301 57 301 118V343H370C501 343 545 293 545 200Z"/><path transform="translate(2985.5,0)" d="M707 269H654C612 119 541 54 420 54H390C341 54 328 56 316 68C303 80 300 91 300 124V346H337C395 346 444 296 455 204H509V543H455C444 451 395 401 337 401H300V582C300 623 302 634 310 646C321 661 345 668 386 668H414C488 668 549 641 583 594C604 564 626 514 641 462H693L687 722H16V668H31C83 668 104 664 113 653C120 645 120 641 120 578V144C120 81 120 77 113 69C104 58 83 54 31 54H16V0H695Z"/><path transform="translate(3773.4,0)" d="M633 223C633 350 558 421 385 459L337 470C260 485 260 485 235 494C190 510 167 539 167 580C167 641 223 685 302 685C406 685 489 612 548 470H601L588 729H543L491 683C435 721 381 737 311 737C157 737 52 647 52 514C52 392 142 305 299 276L361 264C425 252 445 247 469 234C497 219 513 189 513 154C513 84 456 37 369 37C256 37 157 126 102 276H51L57 -7H102L164 52C225 6 289 -15 369 -15C525 -15 633 83 633 223Z"/><path transform="translate(4469.3,0)" d="M707 451 692 722H30L15 451H68C81 525 95 564 119 599C151 647 189 670 235 670C265 670 271 663 271 629V144C271 81 271 77 264 69C255 58 234 54 181 54H159V0H563V54H541C488 54 467 58 458 69C451 77 451 81 451 144V629C451 663 457 670 487 670C530 670 563 652 595 611C623 574 639 532 654 451Z"/></g></svg></span>
     <h1 id="viewTitle">OVERVIEW</h1>
+    <div class="biztog hide" id="bizTog" role="group" aria-label="Business">
+      <button data-b="uffg">UFFG</button><button data-b="uribest">URIBEST</button>
+    </div>
     <div class="who" id="who"></div>
   </div>
   <main>
     <div id="actingAs" class="ok hide"></div>
     <div id="view"></div>
   </main>
-  <nav class="tabs">
-    <button data-v="overview" class="on"><span class="ic">▣</span>Overview</button>
-    <button data-v="tools"><span class="ic">⚒</span>Tools</button>
-    <button data-v="parts"><span class="ic">▤</span>Parts</button>
-    <button data-v="more"><span class="ic">≡</span>More</button>
-  </nav>
+  <nav class="tabs" id="tabs"></nav>
+  <div class="docbar hide" id="docbar"></div>
 </section>
 
 <div class="scrim" id="scrim"></div>
@@ -187,13 +289,13 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp
 const uid = () => (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
 const LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
   del(k) { try { localStorage.removeItem(k); } catch (e) {} }
 };
 
 let TOKEN = LS.get('uffg.token', '');
 let DATA  = LS.get('uffg.data', null);
-let VIEW  = 'overview';
+let VIEW  = LS.get('uffg.tab', '');
 let VIEWAS = '';
 let QUEUE = LS.get('uffg.queue', []);
 let FILTER = { q: '', loc: '', kind: '' };
@@ -201,7 +303,9 @@ let FILTER = { q: '', loc: '', kind: '' };
 /* ===================== server ===================== */
 async function call(fn, args, opts) {
   opts = opts || {};
-  const body = { fn, args: args || {}, token: TOKEN, id: opts.id || '' };
+  args = args || {};
+  if (VIEWAS && args.viewAs === undefined) args = Object.assign({}, args, { viewAs: VIEWAS });   // view & submit as
+  const body = { fn, args, token: TOKEN, id: opts.id || '' };
   const res = await fetch(CONFIG.SCRIPT_URL, {
     method: 'POST',
     // text/plain keeps Apps Script from demanding a CORS preflight
@@ -219,6 +323,7 @@ async function call(fn, args, opts) {
 
 /* Mutations go through the queue so a dead zone never loses a change. */
 function enqueue(fn, args, label) {
+  args = Object.assign({ viewAs: VIEWAS || '' }, args || {});        // remember who it was submitted as
   QUEUE.push({ id: uid(), fn, args, label, at: Date.now() });
   LS.set('uffg.queue', QUEUE);
   paintQueue();
@@ -255,9 +360,14 @@ function paintQueue() {
 
 async function refresh() {
   if (!navigator.onLine) return;
+  if (QUEUE.length && !flushing) { flush(); return; }   // send local changes first; flush refreshes after
   try {
     DATA = await call('bootstrap', VIEWAS ? { viewAs: VIEWAS } : {});
     LS.set('uffg.data', DATA);
+    // Don't yank the page out from under someone mid-edit.
+    if (route().view === 'doc' && DIRTY) { paintDocHead(); return; }
+    const a = document.activeElement;
+    if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && $('#view').contains(a)) return;
     render();
   } catch (e) { /* keep showing the cached copy */ }
 }
@@ -328,6 +438,7 @@ function openSheet(title, bodyNode) {
   b.innerHTML = '';
   if (title) b.appendChild(el('h3', null, esc(title)));
   b.appendChild(bodyNode);
+  $('#scrim').onclick = closeSheet;
   $('#scrim').classList.add('on'); $('#sheet').classList.add('on');
 }
 function closeSheet() { $('#scrim').classList.remove('on'); $('#sheet').classList.remove('on'); }
@@ -357,25 +468,126 @@ function byLoc(part) {
 }
 const lowParts = () => parts().filter(p => p.low > 0 && totalOf(p.part) <= p.low);
 
-/* ===================== render ===================== */
+/* ===================== render / navigation ===================== */
+/* Main tabs: customers · estimates · invoices · inventory · more.
+   Detail pages (customer, doc, services, company) sit on a small stack so Back works. */
+const ICONS = {
+  customers: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.2 3.6-6.5 8-6.5s8 2.3 8 6.5"/>',
+  estimates: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h5"/>',
+  invoices:  '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M12 7v10M14.6 9.4c0-1.1-1.2-1.9-2.6-1.9s-2.6.8-2.6 1.9 1.2 1.6 2.6 1.9 2.6.9 2.6 2-1.2 1.9-2.6 1.9-2.6-.8-2.6-1.9"/>',
+  expenses:  '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18M15.5 15h2.5"/><path d="M6 6l9-3 1.2 3"/>',
+  inventory: '<path d="M3 9h18v11H3z"/><path d="M8 9V5.5h8V9M3 13.5h18"/>',
+  more:      '<path d="M4 7h16M4 12h16M4 17h16"/>'
+};
+const TAB_LABEL = { customers: 'Customers', estimates: 'Estimates', invoices: 'Invoices', expenses: 'Expenses', inventory: 'Inventory', more: 'More' };
+/* Money screens follow the person you're viewing as. Only a real manager can view as someone. */
+const isMgr = () => !!(me().isManager && acting().isManager);
+const allowedBiz = () => (DATA && DATA.biz && DATA.biz.businesses) || acting().businesses || ['uffg', 'uribest'];
+const mainTabs = () => isMgr() ? ['customers', 'estimates', 'invoices', 'expenses', 'inventory', 'more'] : ['inventory', 'more'];
+
+/* ---------- which business: UFFG or Uribest ---------- */
+const BIZ_NAMES = { uffg: 'UFFG', uribest: 'Uribest' };
+let BIZ = LS.get('uffg.biz', 'uffg');
+function setBiz(k) {
+  BIZ = k === 'uribest' ? 'uribest' : 'uffg';
+  LS.set('uffg.biz', BIZ);
+  document.body.dataset.biz = BIZ;
+  const m = document.querySelector('meta[name=theme-color]');
+  if (m) m.content = BIZ === 'uribest' ? '#1F4FB4' : '#2E6B4F';
+}
+setBiz(BIZ);
+document.querySelectorAll('#bizTog button').forEach(b => b.onclick = () => {
+  if (b.dataset.b === BIZ) return;
+  setBiz(b.dataset.b);
+  if (ROUTES.length) ROUTES = [];          // a customer/service page belongs to the other business
+  FILTER = { q: '', loc: '', kind: '' };
+  render(); window.scrollTo(0, 0);
+});
+
+let ROUTES = [];            // stack of {view, id}
+const route = () => ROUTES[ROUTES.length - 1] || { view: VIEW };
+
+function go(view, id) {      // open a detail page on top of the current tab
+  ROUTES.push({ view, id });
+  render(); window.scrollTo(0, 0);
+}
+function goTab(tab) {
+  if (!leaveDocOk(() => goTab(tab))) return;
+  VIEW = tab; ROUTES = []; LS.set('uffg.tab', tab);
+  FILTER = { q: '', loc: '', kind: '' };
+  render(); window.scrollTo(0, 0);
+}
+function back() {
+  if (!leaveDocOk(back)) return;
+  ROUTES.pop(); render(); window.scrollTo(0, 0);
+}
+$('#backBtn').onclick = back;
+
+function paintTabs() {
+  const tabs = mainTabs();
+  if (tabs.indexOf(VIEW) < 0) VIEW = tabs[0];
+  const nav = $('#tabs');
+  nav.style.gridTemplateColumns = 'repeat(' + tabs.length + ',1fr)';
+  nav.innerHTML = '';
+  tabs.forEach(t => {
+    const b = el('button', t === VIEW ? 'on' : '',
+      '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[t] + '</svg>' + TAB_LABEL[t]);
+    b.onclick = () => goTab(t);
+    nav.appendChild(b);
+  });
+}
+
 function render() {
   if (!DATA) return;
+  if (allowedBiz().indexOf(BIZ) < 0) setBiz(allowedBiz()[0]);
+  paintTabs();
   $('#who').innerHTML = esc(acting().name) + '<br>' + esc(acting().base || '');
-  $('#viewTitle').textContent = VIEW.toUpperCase();
   const a = $('#actingAs');
   if (VIEWAS && me().isManager) {
     a.classList.remove('hide');
-    a.innerHTML = 'Viewing as <b>' + esc(acting().name) + '</b> — <button class="link" onclick="stopViewAs()">stop</button>';
+    a.innerHTML = 'Viewing as <b>' + esc(acting().name) + '</b> — what you save is recorded as them. <button class="link" onclick="stopViewAs()">Stop</button>';
   } else a.classList.add('hide');
 
-  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === VIEW));
+  const r = route();
+  const detail = ROUTES.length > 0;
+  $('#backBtn').classList.toggle('hide', !detail);
+  $('#topLogo').classList.toggle('hide', detail || BIZ === 'uribest');
+  $('#topWord').classList.toggle('hide', detail || BIZ !== 'uribest');
+  const allowed = allowedBiz();
+  if (allowed.indexOf(BIZ) < 0) setBiz(allowed[0]);
+  const showTog = isMgr() && allowed.length > 1 && !(r.view === 'inventory' || r.view === 'doc');
+  $('#bizTog').classList.toggle('hide', !showTog);
+  $('#who').classList.toggle('hide', showTog);
+  document.querySelectorAll('#bizTog button').forEach(b => b.classList.toggle('on', b.dataset.b === BIZ));
+  const isDoc = r.view === 'doc';
+  $('#tabs').classList.toggle('hide', isDoc);
+  $('#docbar').classList.toggle('hide', !isDoc);
+  document.body.classList.toggle('indoc', isDoc);
+
   const v = $('#view'); v.innerHTML = '';
-  ({ overview: vOverview, tools: vTools, parts: vParts, more: vMore })[VIEW](v);
+  const wrap = el('div'); v.appendChild(wrap);
+  const views = {
+    customers: vCustomers, estimates: v => vDocList(v, 'estimate'), invoices: v => vDocList(v, 'invoice'), expenses: vExpenses,
+    inventory: vInventory, more: vMore,
+    customer: vCustomer, doc: vDoc, services: vServices, company: vCompany, pnl: vPnl
+  };
+  const titles = { customer: 'Customer', services: 'Services & pricing', company: 'Company info', pnl: 'Profit & loss' };
+  $('#viewTitle').textContent = (r.view === 'doc' ? docLabel(EDIT) : (titles[r.view] || TAB_LABEL[r.view] || r.view)).toUpperCase();
+  (views[r.view] || vInventory)(wrap, r.id);
 }
 
-document.querySelectorAll('.tabs button').forEach(b => {
-  b.onclick = () => { VIEW = b.dataset.v; FILTER = { q: '', loc: '', kind: '' }; render(); window.scrollTo(0, 0); };
-});
+/* ---------- inventory (overview / tools / parts under one tab) ---------- */
+let INV = LS.get('uffg.inv', 'overview');
+function vInventory(v) {
+  const seg = el('div', 'seg');
+  [['overview', 'Overview'], ['tools', 'Tools'], ['parts', 'Parts']].forEach(([k, lab]) => {
+    const b = el('button', INV === k ? 'on' : '', lab);
+    b.onclick = () => { INV = k; LS.set('uffg.inv', k); FILTER = { q: '', loc: '', kind: '' }; render(); };
+    seg.appendChild(b);
+  });
+  v.appendChild(seg);
+  ({ overview: vOverview, tools: vTools, parts: vParts })[INV](v);
+}
 
 /* ---------- overview ---------- */
 function vOverview(v) {
@@ -676,6 +888,18 @@ function addPartSheet() {
 
 /* ---------- more ---------- */
 function vMore(v) {
+  if (isMgr()) {
+    v.appendChild(el('h2', null, BIZ_NAMES[BIZ] + ' business'));
+    [['Profit & loss', 'Income, job costs, overhead, profit by project', 'pnl'],
+     ['Company info', (companyOf(BIZ).name || BIZ_NAMES[BIZ]) + ' · printed on PDFs', 'company'],
+     ['Services & pricing', (svcs().length || 'No') + ' saved services', 'services']].forEach(([t, m, view]) => {
+      const c = el('div', 'card tap');
+      c.innerHTML = `<div class="row"><div class="grow"><div class="ttl">${esc(t)}</div><div class="meta">${esc(m)}</div></div><span class="chev">›</span></div>`;
+      c.onclick = () => go(view);
+      v.appendChild(c);
+    });
+    v.appendChild(el('div', 'gap'));
+  }
   v.appendChild(el('h2', null, 'Locations'));
   locs().forEach(l => {
     const c = el('div', 'card');
@@ -699,16 +923,21 @@ function vMore(v) {
   v.appendChild(addL);
 
   if (me().isManager) {
-    v.appendChild(el('h2', null, 'Team'));
+    v.appendChild(el('h2', null, 'Team · view & submit as'));
     (DATA.team || []).forEach(t => {
-      const c = el('div', 'card');
-      c.innerHTML = `<div class="row"><div class="grow"><div class="ttl">${esc(t.name)}</div>
-        <div class="meta">${esc(t.email)} · ${esc(t.base || 'no base')}</div></div>
-        <span class="pill">${esc(t.role)}</span></div>`;
-      if (t.email !== me().email) c.onclick = () => { VIEWAS = t.email; refresh(); closeSheet(); };
+      const isMe = t.email === me().email, isActing = VIEWAS && t.email === VIEWAS;
+      const only = t.businesses && t.businesses.length === 1 ? BIZ_NAMES[t.businesses[0]] + ' only' : '';
+      const c = el('div', 'card' + (isMe ? '' : ' tap') + (isActing ? ' acting' : ''));
+      c.innerHTML = `<div class="row"><div class="grow"><div class="ttl">${esc(t.name)}${isMe ? ' <span class="meta">(you)</span>' : ''}</div>
+        <div class="meta">${esc([t.email, t.base, only].filter(Boolean).join(' · '))}</div></div>
+        <span class="pill">${esc(isActing ? 'Viewing' : t.role)}</span></div>`;
+      if (!isMe) c.onclick = () => {
+        VIEWAS = isActing ? '' : t.email; ROUTES = []; VIEW = ''; DATA.biz = null;
+        toast(VIEWAS ? 'Now viewing & submitting as ' + t.name : 'Back to you'); refresh();
+      };
       v.appendChild(c);
     });
-    v.appendChild(el('div', 'sub', 'Tap a person to view as them. Edit the Team tab in the sheet to add or remove people.'));
+    v.appendChild(el('div', 'sub', 'Tap a person to see the app exactly as they do. Anything you save while viewing is recorded under their name. Add or remove people on the Team tab of the sheet (Role: Manager or Lead; Businesses: blank for both, or "Uribest").'));
 
     const imp = el('button', 'btn ghost wide', 'Import a list');
     imp.style.margin = '6px 0 20px';
@@ -740,7 +969,7 @@ function vMore(v) {
   v.appendChild(el('div', 'sub center', 'v' + (DATA.version || '?')));
 }
 
-function stopViewAs() { VIEWAS = ''; refresh(); }
+function stopViewAs() { VIEWAS = ''; ROUTES = []; VIEW = ''; refresh(); }
 window.stopViewAs = stopViewAs;
 
 function importSheet() {
@@ -759,6 +988,1558 @@ function importSheet() {
     closeSheet(); toast('Importing ' + rows.length + ' rows…');
   }));
   openSheet('Import a list', b);
+}
+
+/* ===================== business: data ===================== */
+function biz() {
+  const empty = () => ({ company: {}, customers: [], services: [], docs: [], payments: [] });
+  if (!DATA) return empty();
+  if (!DATA.biz) DATA.biz = empty();
+  return DATA.biz;
+}
+/* Company info for a business. Older cached data had one flat object = UFFG. */
+function companyOf(k) {
+  const c = biz().company || {};
+  if (c.uffg || c.uribest) return c[k] || {};
+  return k === 'uffg' ? c : {};
+}
+const company = () => companyOf(BIZ);
+const inBiz = x => (x.business || 'uffg') === BIZ;
+const custs = () => biz().customers.filter(inBiz);
+const svcs = () => biz().services.filter(inBiz);
+const expensesAll = () => (biz().expenses || []);
+const expenses = () => expensesAll().filter(inBiz);
+const r2 = n => Math.round((Number(n) || 0) * 100) / 100;
+const money = n => (r2(n) < 0 ? '-$' : '$') + Math.abs(r2(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const clone = o => JSON.parse(JSON.stringify(o));
+function today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function addDays(ymd, n) {
+  const p = (ymd || today()).split('-').map(Number); const d = new Date(p[0], p[1] - 1, p[2] + (Number(n) || 0));
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function fmtDate(ymd) {
+  if (!ymd) return '';
+  const p = String(ymd).slice(0, 10).split('-').map(Number);
+  if (p.length < 3 || !p[0]) return String(ymd);
+  return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtQty(q) { q = Number(q) || 0; return String(Math.round(q * 1000) / 1000); }
+
+/* Same math as the server: discount off the subtotal, tax on taxable lines only. */
+function totals(d) {
+  let sub = 0, taxable = 0;
+  (d.lines || []).forEach(l => { if (l.heading) return; const a = r2((Number(l.qty) || 0) * (Number(l.rate) || 0)); sub += a; if (l.taxable) taxable += a; });
+  sub = r2(sub);
+  const disc = Math.min(Math.max(0, r2(d.discount)), sub);
+  const tax = r2((sub ? taxable * (1 - disc / sub) : 0) * (Number(d.taxRate) || 0) / 100);
+  return { subtotal: sub, discount: disc, tax, total: r2(sub - disc + tax) };
+}
+
+const customerById = id => biz().customers.find(c => c.id === id);
+const custName = id => { const c = customerById(id); return c ? c.name : 'No customer'; };
+const docById = id => biz().docs.find(d => d.id === id);
+const docsOf = type => biz().docs.filter(d => d.type === type && inBiz(d));
+const changeOrdersOf = estId => biz().docs.filter(d => d.type === 'change' && d.parent === estId)
+  .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+const paymentsOf = invId => biz().payments.filter(p => p.invoice === invId);
+const TYPE_LABEL = { estimate: 'Estimate', invoice: 'Invoice', change: 'Change order' };
+function docLabel(d) { return d ? (TYPE_LABEL[d.type] || 'Document') + (d.number ? ' ' + d.number : '') : ''; }
+function balance(inv) { return r2(totals(inv).total - (Number(inv.paid) || 0)); }
+function isOverdue(inv) { return inv.type === 'invoice' && (inv.status === 'Sent' || inv.status === 'Partial') && inv.due && inv.due < today(); }
+function shownStatus(d) { return isOverdue(d) ? 'Overdue' : (d.status || 'Draft'); }
+function pillClass(st) {
+  return ({ Draft: 'grey', Sent: 'out', Approved: 'good', Paid: 'good', Partial: 'warn', Declined: 'bad', Void: 'bad', Overdue: 'bad' })[st] || '';
+}
+function custBalance(cid) {
+  return r2(docsOf('invoice').filter(d => d.customer === cid && d.status !== 'Void' && d.status !== 'Draft')
+    .reduce((s, d) => s + balance(d), 0));
+}
+/* Contract value of an estimate = estimate total + its approved change orders. */
+function contractTotal(est) {
+  return r2(totals(est).total + changeOrdersOf(est.id).filter(c => c.status === 'Approved').reduce((s, c) => s + totals(c).total, 0));
+}
+function upsertLocal(list, obj) {
+  const i = list.findIndex(x => x.id === obj.id);
+  if (i >= 0) list[i] = obj; else list.unshift(obj);
+}
+function saveLocal() { LS.set('uffg.data', DATA); }
+
+/* ===================== small UI bits ===================== */
+function card(html, onclick) { const c = el('div', 'card' + (onclick ? ' tap' : ''), html); if (onclick) c.onclick = onclick; return c; }
+function pill(st) { return `<span class="pill ${pillClass(st)}">${esc(st)}</span>`; }
+function field(label, inner) { return `<div class="field"><label>${esc(label)}</label>${inner}</div>`; }
+function confirmSheet(title, msg, okLabel, fn, danger) {
+  const b = el('div');
+  b.innerHTML = `<p class="sub" style="margin:6px 0 14px">${esc(msg)}</p>`;
+  const acts = el('div', 'actions');
+  acts.appendChild(btn(okLabel, () => { closeSheet(); fn(); }, danger ? 'danger' : ''));
+  acts.appendChild(btn('Cancel', closeSheet, 'ghost'));
+  b.appendChild(acts);
+  openSheet(title, b);
+}
+function searchBox(v, placeholder, value, oninput) {
+  const s = el('div', 'search');
+  s.innerHTML = `<input type="search" placeholder="${esc(placeholder)}" value="${esc(value || '')}">`;
+  s.querySelector('input').oninput = e => oninput(e.target.value);
+  v.appendChild(s);
+  return s.querySelector('input');
+}
+function chipRow(v, options, current, onpick) {
+  const chips = el('div', 'chips');
+  options.forEach(([val, lab]) => {
+    const b = el('button', current === val ? 'on' : '', esc(lab));
+    b.onclick = () => onpick(val);
+    chips.appendChild(b);
+  });
+  v.appendChild(chips);
+}
+
+/* ===================== customers ===================== */
+function vCustomers(v) {
+  const top = el('div', 'row', '');
+  top.style.marginBottom = '10px';
+  const add = btn('+ New customer', () => customerSheet(null, c => go('customer', c.id)));
+  add.classList.add('wide');
+  top.appendChild(add);
+  v.appendChild(top);
+  searchBox(v, 'Search customers', FILTER.q, q => { FILTER.q = q; paint(); });
+  const list = el('div'); v.appendChild(list);
+  function paint() {
+    const q = FILTER.q.toLowerCase();
+    const items = custs().filter(c => !q || [c.name, c.company, c.phone, c.email, c.address].join(' ').toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    list.innerHTML = '';
+    if (!items.length) {
+      list.appendChild(el('div', 'empty', custs().length ? 'No customers match.' : 'No ' + BIZ_NAMES[BIZ] + ' customers yet. Add your first one above.'));
+      return;
+    }
+    items.forEach(c => {
+      const bal = custBalance(c.id);
+      list.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">${esc(c.name)}</div>
+        <div class="meta">${esc([c.company, c.phone].filter(Boolean).join(' · ') || c.address || c.email || '')}</div></div>
+        ${bal > 0 ? `<span class="pill warn">${money(bal)} due</span>` : '<span class="chev">›</span>'}</div>`, () => go('customer', c.id)));
+    });
+  }
+  paint();
+}
+
+function customerSheet(c, after) {
+  const isNew = !c;
+  c = c ? clone(c) : { id: uid(), business: BIZ, name: '', company: '', phone: '', email: '', address: '', notes: '' };
+  const b = el('div');
+  b.innerHTML =
+    field('Name', `<input id="cn" value="${esc(c.name)}" placeholder="Jane Smith" autocomplete="off">`) +
+    field('Company (optional)', `<input id="cco" value="${esc(c.company)}">`) +
+    `<div class="grid2">` +
+    field('Phone', `<input id="cph" type="tel" inputmode="tel" value="${esc(c.phone)}">`) +
+    field('Email', `<input id="cem" type="email" inputmode="email" autocapitalize="off" value="${esc(c.email)}">`) +
+    `</div>` +
+    field('Address / job site', `<textarea id="cad" rows="2">${esc(c.address)}</textarea>`) +
+    field('Notes', `<textarea id="cnt" rows="2">${esc(c.notes)}</textarea>`);
+  const acts = el('div', 'actions');
+  acts.appendChild(btn(isNew ? 'Add customer' : 'Save', () => {
+    c.name = $('#cn').value.trim(); if (!c.name) return toast('Give the customer a name.', true);
+    c.company = $('#cco').value.trim(); c.phone = $('#cph').value.trim(); c.email = $('#cem').value.trim();
+    c.address = $('#cad').value.trim(); c.notes = $('#cnt').value.trim();
+    upsertLocal(biz().customers, c); saveLocal();
+    enqueue('saveCustomer', c, c.name);
+    closeSheet();
+    if (after) after(c); else render();
+  }));
+  if (!isNew) acts.appendChild(btn('Archive customer', () => confirmSheet('Archive ' + c.name + '?',
+    'They disappear from lists. Their estimates and invoices stay.', 'Archive', () => {
+      DATA.biz.customers = biz().customers.filter(x => x.id !== c.id); saveLocal();
+      enqueue('archiveCustomer', { id: c.id }, c.name);
+      ROUTES = []; render();
+    }, true), 'ghost'));
+  b.appendChild(acts);
+  openSheet(isNew ? 'New customer' : 'Edit customer', b);
+  setTimeout(() => { const n = $('#cn'); if (n && isNew) n.focus(); }, 250);
+}
+
+function vCustomer(v, id) {
+  const c = customerById(id);
+  if (!c) { v.appendChild(el('div', 'empty', 'Customer not found.')); return; }
+  const tel = (c.phone || '').replace(/[^\d+]/g, '');
+  v.appendChild(card(`<div class="row"><div class="grow"><div class="big">${esc(c.name)}</div>
+      ${c.company ? `<div class="meta">${esc(c.company)}</div>` : ''}</div>
+      <button class="btn sm ghost" id="editC">Edit</button></div>
+    ${c.address ? `<div class="meta" style="margin-top:8px;white-space:pre-line">${esc(c.address)}</div>` : ''}
+    ${c.phone || c.email ? `<div class="meta">${esc([c.phone, c.email].filter(Boolean).join(' · '))}</div>` : ''}
+    ${c.notes ? `<div class="note">${esc(c.notes)}</div>` : ''}
+    <div class="quick">
+      ${tel ? `<a class="qbtn" href="tel:${esc(tel)}">Call</a><a class="qbtn" href="sms:${esc(tel)}">Text</a>` : ''}
+      ${c.email ? `<a class="qbtn" href="mailto:${esc(c.email)}">Email</a>` : ''}
+      ${c.address ? `<a class="qbtn" target="_blank" rel="noopener" href="https://maps.apple.com/?q=${encodeURIComponent(c.address)}">Map</a>` : ''}
+    </div>`));
+  v.querySelector('#editC').onclick = () => customerSheet(c, () => render());
+
+  const bal = custBalance(c.id);
+  const g = el('div', 'grid2'); g.style.margin = '4px 0 14px';
+  g.appendChild(btn('+ Estimate', () => openNewDoc('estimate', c.id)));
+  g.appendChild(btn('+ Invoice', () => openNewDoc('invoice', c.id), 'ghost'));
+  v.appendChild(g);
+  if (bal > 0) v.appendChild(el('div', 'ok balbar', `Balance due <b>${money(bal)}</b>`));
+
+  const ests = docsOf('estimate').filter(d => d.customer === c.id).sort(byNewest);
+  const invs = docsOf('invoice').filter(d => d.customer === c.id).sort(byNewest);
+  v.appendChild(el('h2', null, 'Estimates'));
+  if (!ests.length) v.appendChild(el('div', 'empty sm', 'None yet.'));
+  ests.forEach(d => v.appendChild(docCard(d)));
+  v.appendChild(el('h2', null, 'Invoices'));
+  if (!invs.length) v.appendChild(el('div', 'empty sm', 'None yet.'));
+  invs.forEach(d => v.appendChild(docCard(d)));
+}
+
+function customerPicker(onpick) {
+  const b = el('div');
+  b.innerHTML = `<div class="search"><input id="cpq" type="search" placeholder="Search customers" autocomplete="off"></div><div id="cpl"></div>`;
+  const add = btn('+ New customer', () => customerSheet(null, c => onpick(c)), 'ghost');
+  add.classList.add('wide'); add.style.marginTop = '8px';
+  b.appendChild(add);
+  openSheet('Pick a customer', b);
+  const paint = () => {
+    const q = $('#cpq').value.toLowerCase(), l = $('#cpl'); l.innerHTML = '';
+    custs().filter(c => !q || [c.name, c.company, c.phone].join(' ').toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name)).slice(0, 60)
+      .forEach(c => l.appendChild(card(`<div class="ttl">${esc(c.name)}</div><div class="meta">${esc([c.company, c.phone].filter(Boolean).join(' · '))}</div>`,
+        () => { closeSheet(); onpick(c); })));
+    if (!l.children.length) l.appendChild(el('div', 'empty sm', 'No match. Add them as a new customer.'));
+  };
+  $('#cpq').oninput = paint; paint();
+}
+
+/* ===================== estimate / invoice lists ===================== */
+const byNewest = (a, b) => (b.date || '').localeCompare(a.date || '') || (b.created || '').localeCompare(a.created || '');
+
+function docCard(d) {
+  const st = shownStatus(d);
+  const right = d.type === 'invoice' && (st === 'Partial' || st === 'Sent' || st === 'Overdue')
+    ? `<div class="amt">${money(balance(d))}</div><div class="meta r">due</div>` : `<div class="amt">${money(totals(d).total)}</div>`;
+  const cos = d.type === 'estimate' ? changeOrdersOf(d.id).length : 0;
+  return card(`<div class="row"><div class="grow">
+      <div class="ttl">${esc(custName(d.customer))}</div>
+      <div class="meta">${esc([d.number || 'New', d.title].filter(Boolean).join(' · '))}</div>
+      <div class="meta">${esc(fmtDate(d.date))}${d.type === 'invoice' && d.due ? ' · due ' + esc(fmtDate(d.due)) : ''}${cos ? ' · ' + cos + ' change order' + (cos > 1 ? 's' : '') : ''}</div>
+    </div><div class="rcol">${right}${pill(st)}</div></div>`, () => openDoc(d.id));
+}
+
+function vDocList(v, type) {
+  const isEst = type === 'estimate';
+  const all = docsOf(type);
+  // summary tiles
+  const s = el('div', 'stat');
+  if (isEst) {
+    const open = all.filter(d => d.status === 'Draft' || d.status === 'Sent');
+    const won = all.filter(d => d.status === 'Approved');
+    s.innerHTML = `<div><b>${money(open.reduce((a, d) => a + totals(d).total, 0))}</b><span>${open.length} open</span></div>
+      <div><b>${money(won.reduce((a, d) => a + contractTotal(d), 0))}</b><span>${won.length} approved</span></div>`;
+  } else {
+    const unpaid = all.filter(d => ['Sent', 'Partial'].includes(d.status));
+    const late = unpaid.filter(isOverdue);
+    s.innerHTML = `<div><b>${money(unpaid.reduce((a, d) => a + balance(d), 0))}</b><span>${unpaid.length} unpaid</span></div>
+      <div class="${late.length ? 'alert' : ''}"><b>${money(late.reduce((a, d) => a + balance(d), 0))}</b><span>${late.length} overdue</span></div>`;
+  }
+  v.appendChild(s);
+  const add = btn('+ New ' + (isEst ? 'estimate' : 'invoice'), () => customerPicker(c => openNewDoc(type, c.id)));
+  add.classList.add('wide'); add.style.marginBottom = '10px';
+  v.appendChild(add);
+  searchBox(v, 'Search ' + (isEst ? 'estimates' : 'invoices'), FILTER.q, q => { FILTER.q = q; paint(); });
+  const opts = isEst ? [['', 'All'], ['Draft', 'Draft'], ['Sent', 'Sent'], ['Approved', 'Approved'], ['Declined', 'Declined']]
+                     : [['', 'All'], ['unpaid', 'Unpaid'], ['Overdue', 'Overdue'], ['Paid', 'Paid'], ['Draft', 'Draft'], ['Void', 'Void']];
+  chipRow(v, opts, FILTER.kind, k => { FILTER.kind = k; render(); });
+  const list = el('div'); v.appendChild(list);
+  function paint() {
+    const q = FILTER.q.toLowerCase(), k = FILTER.kind;
+    const items = all.filter(d => {
+      const st = shownStatus(d);
+      if (k === 'unpaid' && !['Sent', 'Partial', 'Overdue'].includes(st)) return false;
+      if (k && k !== 'unpaid' && st !== k) return false;
+      return !q || [d.number, d.title, custName(d.customer), d.site].join(' ').toLowerCase().includes(q);
+    }).sort(byNewest);
+    list.innerHTML = '';
+    if (!items.length) list.appendChild(el('div', 'empty', all.length ? 'Nothing matches.' : 'No ' + (isEst ? 'estimates' : 'invoices') + ' yet.'));
+    items.forEach(d => list.appendChild(docCard(d)));
+  }
+  paint();
+}
+
+/* ===================== document editor ===================== */
+let EDIT = null, DIRTY = false;
+
+function newDoc(type, customerId, parent) {
+  const co = company(), c = customerById(customerId) || {};
+  const d = {
+    id: uid(), business: BIZ, type, number: '', customer: customerId, title: '', site: (c.address || '').replace(/\s*\n\s*/g, ', '), status: 'Draft',
+    date: today(), due: '', parent: parent || '', lines: [], taxRate: Number(co.taxRate) || 0, discount: 0, deposit: 0,
+    notes: '', terms: '', paid: 0, billed: '', created: new Date().toISOString(), _new: true
+  };
+  if (type === 'estimate') { d.due = addDays(d.date, co.estimateDays || 30); d.terms = co.estimateTerms || ''; }
+  if (type === 'invoice') { d.due = addDays(d.date, co.invoiceDays || 0); d.terms = co.invoiceTerms || ''; }
+  if (type === 'change') { d.terms = co.changeTerms || ''; }
+  return d;
+}
+function openNewDoc(type, customerId, parent) {
+  EDIT = newDoc(type, customerId, parent); DIRTY = true;
+  if (parent) { const p = docById(parent); if (p) { EDIT.taxRate = p.taxRate; EDIT.site = p.site; } }
+  go('doc', EDIT.id);
+}
+function openDoc(id) {
+  const d = docById(id); if (!d) return toast('Not found.', true);
+  if ((d.business || 'uffg') !== BIZ) setBiz(d.business);
+  EDIT = clone(d); DIRTY = false;
+  go('doc', id);
+}
+
+/* Leaving a page with unsaved edits asks first. Returns true if it's fine to leave now. */
+function leaveDocOk(retry) {
+  if (route().view !== 'doc' || !DIRTY) return true;
+  const b = el('div');
+  b.innerHTML = `<p class="sub" style="margin:6px 0 14px">You have changes that aren't saved.</p>`;
+  const acts = el('div', 'actions');
+  acts.appendChild(btn('Save', () => { closeSheet(); saveEdit(); retry(); }));
+  acts.appendChild(btn('Discard changes', () => { closeSheet(); DIRTY = false; retry(); }, 'ghost'));
+  acts.appendChild(btn('Keep editing', closeSheet, 'ghost'));
+  b.appendChild(acts);
+  openSheet('Save changes?', b);
+  return false;
+}
+
+function saveEdit(silent) {
+  if (!EDIT) return;
+  if (!EDIT.customer) return toast('Pick a customer first.', true);
+  const t = totals(EDIT);
+  Object.assign(EDIT, t);
+  const billFrom = EDIT._billFrom;
+  const stored = clone(EDIT); delete stored._new; delete stored._billFrom;
+  upsertLocal(biz().docs, stored);
+  (billFrom || []).forEach(id => { const s = docById(id); if (s) s.billed = EDIT.id; });
+  saveLocal();
+  const payload = { doc: stored }; if (billFrom) payload.billFrom = billFrom;
+  enqueue('saveDoc', payload, docLabel(EDIT) || TYPE_LABEL[EDIT.type]);
+  delete EDIT._new; delete EDIT._billFrom;
+  DIRTY = false;
+  if (!silent) { toast('Saved'); paintDocBar(); paintDocHead(); }
+}
+
+function setStatus(st) {
+  if (DIRTY || EDIT._new) saveEdit(true);
+  EDIT.status = st;
+  const d = docById(EDIT.id); if (d) d.status = st;
+  if (st === 'Approved') EDIT.approvedAt = new Date().toISOString();
+  saveLocal();
+  enqueue('setDocStatus', { id: EDIT.id, status: st }, docLabel(EDIT));
+  toast(docLabel(EDIT) + ' marked ' + st.toLowerCase());
+  render();
+}
+
+function vDoc(v, id) {
+  if (!EDIT || EDIT.id !== id) { const d = docById(id); if (!d) { v.appendChild(el('div', 'empty', 'Not found.')); return; } EDIT = clone(d); DIRTY = false; }
+  else if (!DIRTY && !EDIT._new) { const d = docById(id); if (d) EDIT = clone(d); }
+  const d = EDIT, c = customerById(d.customer) || { name: 'Pick a customer' };
+  const isInv = d.type === 'invoice', isEst = d.type === 'estimate', isCO = d.type === 'change';
+  const parent = isCO ? docById(d.parent) : null;
+
+  // ---- header
+  const head = el('div', 'card'); head.id = 'docHead';
+  v.appendChild(head);
+  const cust = card(`<div class="row"><div class="grow"><label>${isInv ? 'Bill to' : 'Customer'}</label>
+      <div class="ttl">${esc(c.name)}</div><div class="meta">${esc([c.phone, c.email].filter(Boolean).join(' · '))}</div></div><span class="chev">›</span></div>`,
+    () => { if (isCO) return toast('A change order stays with its estimate’s customer.'); customerPicker(nc => { EDIT.customer = nc.id; if (!EDIT.site) EDIT.site = (nc.address || '').replace(/\s*\n\s*/g, ', '); DIRTY = true; render(); }); });
+  v.appendChild(cust);
+  if (parent) v.appendChild(card(`<div class="meta">Change to <b>${esc(parent.number)}</b>${parent.title ? ' · ' + esc(parent.title) : ''}</div>
+      <div class="meta">Original estimate ${money(totals(parent).total)} · contract now ${money(contractTotal(parent))}</div>`, () => openDocFromDoc(parent.id)));
+
+  const f = el('div', 'card');
+  f.innerHTML =
+    field(isCO ? 'What changed' : 'Job name', `<input data-f="title" value="${esc(d.title)}" placeholder="${isCO ? 'Add 2 extra posts' : 'Backyard carport 20x20'}">`) +
+    field('Job site address', `<input data-f="site" value="${esc(d.site)}" placeholder="${esc(c.address || 'Same as customer')}">`) +
+    `<div class="grid2">` + field('Date', `<input type="date" data-f="date" value="${esc(d.date)}">`) +
+    (isCO ? '' : field(isInv ? 'Due date' : 'Valid until', `<input type="date" data-f="due" value="${esc(d.due)}">`)) + `</div>`;
+  v.appendChild(f);
+
+  // ---- line items
+  v.appendChild(el('h2', null, 'Line items'));
+  const li = el('div', 'card lines');
+  if (!d.lines.length) li.appendChild(el('div', 'empty sm', 'No items yet. Add a service or a custom item.'));
+  d.lines.forEach((l, i) => {
+    const row = el('div', 'line' + (l.heading ? ' head' : ''));
+    row.innerHTML = l.heading ? `<div class="ttl">${esc(l.name)}</div>` :
+      `<div class="row"><div class="grow"><div class="ttl">${esc(l.name || '(no name)')}</div>
+        ${l.desc ? `<div class="meta clamp">${esc(l.desc)}</div>` : ''}
+        <div class="meta">${fmtQty(l.qty)}${l.unit ? ' ' + esc(l.unit) : ''} × ${money(l.rate)}${l.taxable ? ' · taxable' : ''}</div></div>
+        <div class="amt">${money(r2(l.qty * l.rate))}</div></div>`;
+    row.onclick = () => lineSheet(i);
+    li.appendChild(row);
+  });
+  const addRow = el('div', 'grid2'); addRow.style.marginTop = '10px';
+  addRow.appendChild(btn('+ Add item', addItemSheet));
+  addRow.appendChild(btn('+ Section heading', () => { EDIT.lines.push({ heading: true, name: '' }); DIRTY = true; lineSheet(EDIT.lines.length - 1, true); }, 'ghost'));
+  li.appendChild(addRow);
+  v.appendChild(li);
+
+  // ---- totals
+  const tc = el('div', 'card'); tc.id = 'totals'; v.appendChild(tc);
+  const tf = el('div', 'grid3');
+  tf.innerHTML = field('Discount $', `<input data-f="discount" inputmode="decimal" type="number" step="0.01" min="0" value="${d.discount || ''}" placeholder="0">`) +
+    field('Tax rate %', `<input data-f="taxRate" inputmode="decimal" type="number" step="0.001" min="0" value="${d.taxRate || ''}" placeholder="0">`) +
+    (isEst ? field('Deposit %', `<input data-f="deposit" inputmode="decimal" type="number" step="1" min="0" max="100" value="${d.deposit || ''}" placeholder="0">`) : '<div></div>');
+  v.appendChild(tf);
+
+  // ---- payments (invoice)
+  if (isInv && !d._new) {
+    v.appendChild(el('h2', null, 'Payments'));
+    const pc = el('div', 'card');
+    const pays = paymentsOf(d.id);
+    if (!pays.length) pc.appendChild(el('div', 'meta', 'No payments recorded.'));
+    pays.forEach(p => {
+      const r = el('div', 'row line');
+      r.innerHTML = `<div class="grow"><div class="ttl">${money(p.amount)}</div><div class="meta">${esc([fmtDate(p.date), p.method, p.note].filter(Boolean).join(' · '))}</div></div><button class="link">Remove</button>`;
+      r.querySelector('button').onclick = () => confirmSheet('Remove payment?', money(p.amount) + ' on ' + fmtDate(p.date), 'Remove', () => {
+        DATA.biz.payments = biz().payments.filter(x => x.id !== p.id);
+        localPaid(d.id); saveLocal();
+        enqueue('deletePayment', { id: p.id }, 'Payment'); render();
+      }, true);
+      pc.appendChild(r);
+    });
+    if (d.status !== 'Void') { const rp = btn('Record payment', paymentSheet, 'ghost'); rp.classList.add('wide'); rp.style.marginTop = '10px'; pc.appendChild(rp); }
+    v.appendChild(pc);
+  }
+
+  // ---- change orders (estimate)
+  if (isEst && !d._new) {
+    v.appendChild(el('h2', null, 'Change orders'));
+    const cos = changeOrdersOf(d.id);
+    if (!cos.length) v.appendChild(el('div', 'meta', d.status === 'Approved' ? 'None yet.' : 'Available once the estimate is approved.'));
+    cos.forEach(co => v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">${esc(co.number || 'New')}</div>
+        <div class="meta">${esc(co.title || '')}${co.billed ? ' · billed' : ''}</div></div>
+        <div class="rcol"><div class="amt">${money(totals(co).total)}</div>${pill(co.status)}</div></div>`, () => openDocFromDoc(co.id))));
+    if (cos.length) v.appendChild(el('div', 'meta r', 'Contract total with approved changes: <b>' + money(contractTotal(d)) + '</b>'));
+    if (d.status === 'Approved') { const nb = btn('+ New change order', newChangeOrder, 'ghost'); nb.classList.add('wide'); nb.style.marginTop = '8px'; v.appendChild(nb); }
+  }
+
+  // ---- job costs (saved estimates and invoices)
+  if (!d._new && d.type !== 'change') jobCostsSection(v, d);
+
+  // ---- notes & terms
+  v.appendChild(el('h2', null, 'Notes'));
+  const nt = el('div', 'card');
+  nt.innerHTML = field('Message to customer', `<textarea data-f="notes" rows="3" placeholder="Shows on the PDF">${esc(d.notes)}</textarea>`) +
+    field('Terms', `<textarea data-f="terms" rows="3">${esc(d.terms)}</textarea>`);
+  v.appendChild(nt);
+  v.appendChild(el('div', 'gap'));
+
+  // one listener for every field on the page
+  v.addEventListener('input', e => {
+    const k = e.target.dataset && e.target.dataset.f; if (!k) return;
+    EDIT[k] = ['discount', 'taxRate', 'deposit'].includes(k) ? (Number(e.target.value) || 0) : e.target.value;
+    DIRTY = true; paintTotals(); paintDocBar();
+  });
+  paintDocHead(); paintTotals(); paintDocBar();
+}
+
+function openDocFromDoc(id) {
+  if (!leaveDocOk(() => openDocFromDoc(id))) return;
+  const d = docById(id); if (!d) return;
+  if ((d.business || 'uffg') !== BIZ) setBiz(d.business);
+  EDIT = clone(d); DIRTY = false; go('doc', id);
+}
+
+function paintDocHead() {
+  const h = $('#docHead'); if (!h || !EDIT) return;
+  const d = EDIT.id ? (DIRTY ? EDIT : (docById(EDIT.id) || EDIT)) : EDIT;
+  if (!DIRTY && d !== EDIT) { EDIT.number = d.number; EDIT.status = d.status; }
+  h.innerHTML = `<div class="row"><div class="grow"><div class="kicker">${esc(BIZ_NAMES[EDIT.business || 'uffg'] + ' · ' + TYPE_LABEL[EDIT.type])}</div>
+    <div class="big">${esc(EDIT.number || (EDIT._new ? 'New' : 'Saving…'))}</div></div>${pill(shownStatus(EDIT))}</div>
+    ${EDIT.billed ? `<div class="meta">Billed on ${esc((docById(EDIT.billed) || {}).number || 'an invoice')}</div>` : ''}`;
+  if (EDIT.billed) { const m = h.querySelector('.meta:last-child'); m.classList.add('linkish'); m.onclick = () => openDocFromDoc(EDIT.billed); }
+  $('#viewTitle').textContent = docLabel(EDIT).toUpperCase();
+}
+
+function paintTotals() {
+  const tc = $('#totals'); if (!tc) return;
+  const d = EDIT, t = totals(d), rows = [];
+  rows.push(['Subtotal', money(t.subtotal)]);
+  if (t.discount) rows.push(['Discount', '-' + money(t.discount)]);
+  if (t.tax) rows.push(['Tax (' + d.taxRate + '%)', money(t.tax)]);
+  rows.push(['Total', money(t.total), 'big']);
+  if (d.type === 'estimate' && Number(d.deposit)) rows.push(['Deposit (' + d.deposit + '%)', money(r2(t.total * d.deposit / 100))]);
+  if (d.type === 'invoice' && !d._new) {
+    rows.push(['Paid', '-' + money(d.paid || 0)]);
+    rows.push(['Balance due', money(r2(t.total - (d.paid || 0))), 'big']);
+  }
+  tc.innerHTML = rows.map(r => `<div class="trow ${r[2] || ''}"><span>${esc(r[0])}</span><span>${r[1]}</span></div>`).join('');
+}
+
+function paintDocBar() {
+  const bar = $('#docbar'); if (!bar || !EDIT) return;
+  bar.innerHTML = '';
+  const s = btn(DIRTY ? 'Save' : 'Saved', () => saveEdit(), DIRTY ? '' : 'ghost');
+  if (!DIRTY) s.disabled = true;
+  bar.appendChild(s);
+  bar.appendChild(btn('PDF', pdfSheet, 'ghost'));
+  bar.appendChild(btn('More', actionsSheet, 'ghost'));
+}
+
+/* ---- line items ---- */
+function addItemSheet() {
+  const b = el('div');
+  b.innerHTML = `<div class="search"><input id="svq" type="search" placeholder="Search your services" autocomplete="off"></div><div id="svl"></div>`;
+  const custom = btn('+ Custom item', () => { closeSheet(); EDIT.lines.push({ name: '', desc: '', qty: 1, unit: '', rate: 0, taxable: false }); DIRTY = true; lineSheet(EDIT.lines.length - 1, true); }, 'ghost');
+  custom.classList.add('wide'); custom.style.marginTop = '8px';
+  b.appendChild(custom);
+  openSheet('Add item', b);
+  const paint = () => {
+    const q = $('#svq').value.toLowerCase(), l = $('#svl'); l.innerHTML = '';
+    const list = svcs().filter(s => !q || (s.name + ' ' + s.description).toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+    if (!svcs().length) l.appendChild(el('div', 'empty sm', 'No saved services yet. Add a custom item and tick “Save to my services”.'));
+    else if (!list.length) l.appendChild(el('div', 'empty sm', 'No match.'));
+    list.slice(0, 80).forEach(s => l.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">${esc(s.name)}</div>
+        ${s.description ? `<div class="meta clamp">${esc(s.description)}</div>` : ''}</div>
+        <div class="amt">${money(s.price)}${s.unit ? `<div class="meta r">/${esc(s.unit)}</div>` : ''}</div></div>`, () => {
+          closeSheet();
+          EDIT.lines.push({ name: s.name, desc: s.description, qty: 1, unit: s.unit, rate: s.price, taxable: s.taxable, service: s.id });
+          DIRTY = true; lineSheet(EDIT.lines.length - 1, true);
+        })));
+  };
+  $('#svq').oninput = paint; paint();
+}
+
+function lineSheet(i, isNew) {
+  const l = EDIT.lines[i]; if (!l) return;
+  const b = el('div');
+  if (l.heading) {
+    b.innerHTML = field('Section heading', `<input id="lnm" value="${esc(l.name)}" placeholder="Phase 1 — Demo">`);
+  } else {
+    b.innerHTML = field('Item', `<input id="lnm" value="${esc(l.name)}" placeholder="Carport install">`) +
+      field('Description', `<textarea id="lds" rows="3" placeholder="What's included">${esc(l.desc || '')}</textarea>`) +
+      `<div class="grid3">` +
+      field('Qty', `<input id="lqt" type="number" inputmode="decimal" step="any" value="${l.qty}">`) +
+      field('Unit', `<input id="lun" value="${esc(l.unit || '')}" placeholder="ea, hr, sq ft">`) +
+      field('Rate $', `<input id="lrt" type="number" inputmode="decimal" step="0.01" value="${l.rate || ''}" placeholder="0.00">`) +
+      `</div>
+      <label class="check"><input id="ltx" type="checkbox" ${l.taxable ? 'checked' : ''}> Taxable</label>
+      ${!l.service ? `<label class="check"><input id="lsv" type="checkbox"> Save to my services for next time</label>` : ''}
+      <div class="trow big" style="margin-top:8px"><span>Line total</span><span id="lam">${money(r2(l.qty * l.rate))}</span></div>`;
+  }
+  const acts = el('div', 'actions');
+  acts.appendChild(btn(isNew ? 'Add' : 'Done', () => {
+    l.name = $('#lnm').value.trim();
+    if (!l.heading) {
+      l.desc = $('#lds').value.trim(); l.qty = Number($('#lqt').value) || 0; l.unit = $('#lun').value.trim();
+      l.rate = r2($('#lrt').value); l.taxable = $('#ltx').checked;
+      if (!l.name && !l.desc) return toast('Give the item a name.', true);
+      const sv = $('#lsv');
+      if (sv && sv.checked && l.name) {
+        const s = { id: uid(), business: EDIT.business || BIZ, name: l.name, description: l.desc, unit: l.unit, price: l.rate, taxable: l.taxable };
+        biz().services.push(s); l.service = s.id; saveLocal();
+        enqueue('saveService', s, s.name);
+      }
+    } else if (!l.name) return toast('Type a heading.', true);
+    DIRTY = true; closeSheet(); render();
+  }));
+  const g = el('div', 'grid3');
+  g.appendChild(btn('↑ Up', () => { if (i > 0) { EDIT.lines.splice(i - 1, 0, EDIT.lines.splice(i, 1)[0]); DIRTY = true; closeSheet(); render(); } }, 'ghost sm'));
+  g.appendChild(btn('↓ Down', () => { if (i < EDIT.lines.length - 1) { EDIT.lines.splice(i + 1, 0, EDIT.lines.splice(i, 1)[0]); DIRTY = true; closeSheet(); render(); } }, 'ghost sm'));
+  g.appendChild(btn('Remove', () => { EDIT.lines.splice(i, 1); DIRTY = true; closeSheet(); render(); }, 'ghost sm dangertext'));
+  acts.appendChild(g);
+  b.appendChild(acts);
+  // Cancel on a brand-new blank line removes it
+  openSheet(l.heading ? 'Heading' : (isNew ? 'New item' : 'Edit item'), b);
+  const upd = () => { const a = $('#lam'); if (a) a.textContent = money(r2((Number($('#lqt').value) || 0) * (Number($('#lrt').value) || 0))); };
+  ['#lqt', '#lrt'].forEach(s => { const x = $(s); if (x) x.oninput = upd; });
+  if (isNew) {
+    $('#scrim').onclick = () => { const x = EDIT.lines[i]; if (x && !x.name && !x.desc) EDIT.lines.splice(i, 1); closeSheet(); $('#scrim').onclick = closeSheet; render(); };
+    setTimeout(() => { const n = $(l.name ? '#lqt' : '#lnm'); if (n) n.focus(); }, 250);
+  }
+}
+
+/* ---- payments ---- */
+function localPaid(invId) {
+  const d = docById(invId); if (!d) return;
+  d.paid = r2(paymentsOf(invId).reduce((s, p) => s + p.amount, 0));
+  const t = totals(d).total;
+  if (d.status !== 'Void') d.status = d.paid > 0 && d.paid >= t ? 'Paid' : d.paid > 0 ? 'Partial' : (['Paid', 'Partial'].includes(d.status) ? 'Sent' : d.status);
+  if (EDIT && EDIT.id === invId) { EDIT.paid = d.paid; EDIT.status = d.status; }
+}
+function paymentSheet() {
+  if (DIRTY || EDIT._new) saveEdit(true);
+  const bal = balance(EDIT);
+  const b = el('div');
+  b.innerHTML = `<div class="grid2">` + field('Amount $', `<input id="pam" type="number" inputmode="decimal" step="0.01" value="${bal > 0 ? bal : ''}">`) +
+    field('Date', `<input id="pdt" type="date" value="${today()}">`) + `</div>` +
+    field('Method', `<select id="pme">${['Zelle', 'Check', 'Cash', 'Card', 'Bank transfer', 'Other'].map(m => `<option>${m}</option>`).join('')}</select>`) +
+    field('Note', `<input id="pno" placeholder="Check #, reference…">`);
+  b.appendChild(btn('Save payment', () => {
+    const p = { id: uid(), invoice: EDIT.id, amount: r2($('#pam').value), date: $('#pdt').value || today(), method: $('#pme').value, note: $('#pno').value.trim() };
+    if (p.amount <= 0) return toast('Enter the amount paid.', true);
+    biz().payments.push(p); localPaid(EDIT.id); saveLocal();
+    enqueue('addPayment', p, 'Payment');
+    closeSheet(); toast('Payment recorded'); render();
+  }));
+  openSheet('Record payment', b);
+}
+
+/* ---- estimate → invoice, change orders ---- */
+function buildInvoice(est, cos) {
+  const inv = newDoc('invoice', est.customer, est.id);
+  inv.title = est.title; inv.site = est.site; inv.taxRate = est.taxRate;
+  let lines = [];
+  if (cos.length && est.billed) { /* change orders only */ }
+  else {
+    if (cos.length) lines.push({ heading: true, name: est.title || ('Estimate ' + est.number) });
+    lines = lines.concat(clone(est.lines)); inv.discount = est.discount || 0;
+  }
+  cos.forEach(c => {
+    lines.push({ heading: true, name: 'Change order ' + c.number + (c.title ? ' — ' + c.title : '') });
+    lines = lines.concat(clone(c.lines));
+    inv.discount = r2(inv.discount + (c.discount || 0));
+  });
+  inv.lines = lines;
+  inv._billFrom = (est.billed ? [] : [est.id]).concat(cos.map(c => c.id));
+  return inv;
+}
+function convertToInvoice() {
+  if (DIRTY || EDIT._new) saveEdit(true);
+  const est = docById(EDIT.id);
+  const cos = changeOrdersOf(est.id).filter(c => c.status === 'Approved' && !c.billed);
+  const inv = buildInvoice(est, cos);
+  EDIT = inv; DIRTY = true; saveEdit(true);
+  ROUTES.pop(); go('doc', inv.id);
+  toast('Invoice created from ' + est.number + (cos.length ? ' + ' + cos.length + ' change order' + (cos.length > 1 ? 's' : '') : ''));
+}
+function billChangeOrder() {
+  if (DIRTY) saveEdit(true);
+  const co = docById(EDIT.id), est = docById(co.parent);
+  const inv = buildInvoice(est, [co]);
+  EDIT = inv; DIRTY = true; saveEdit(true);
+  ROUTES.pop(); go('doc', inv.id);
+  toast('Invoice created for ' + co.number);
+}
+function newChangeOrder() {
+  if (DIRTY) saveEdit(true);
+  const est = EDIT;
+  openNewDoc('change', est.customer, est.id);
+}
+function duplicateDoc() {
+  if (DIRTY) saveEdit(true);
+  const src = EDIT;
+  const d = newDoc(src.type === 'change' ? 'estimate' : src.type, src.customer);
+  Object.assign(d, { title: src.title, site: src.site, lines: clone(src.lines), taxRate: src.taxRate, discount: src.discount, deposit: src.deposit, notes: src.notes, terms: src.terms });
+  EDIT = d; DIRTY = true; ROUTES.pop(); go('doc', d.id);
+  toast('Copy made. Change what you need and save.');
+}
+
+function actionsSheet() {
+  const d = EDIT, b = el('div'), acts = el('div', 'actions');
+  const A = (label, fn, cls) => acts.appendChild(btn(label, () => { closeSheet(); fn(); }, cls || 'ghost'));
+  if (d.type === 'estimate' || d.type === 'change') {
+    if (d.status !== 'Sent' && d.status !== 'Approved') A('Mark as sent', () => setStatus('Sent'));
+    if (d.status !== 'Approved') A('Mark approved', () => setStatus('Approved'), '');
+    if (d.status !== 'Declined') A('Mark declined', () => setStatus('Declined'));
+  }
+  if (d.type === 'estimate') {
+    if (d.billed) A('Open invoice ' + ((docById(d.billed) || {}).number || ''), () => openDocFromDoc(d.billed));
+    else A('Convert to invoice', convertToInvoice, '');
+    if (d.status === 'Approved') A('New change order', newChangeOrder);
+  }
+  if (d.type === 'change') {
+    const est = docById(d.parent);
+    if (est) A('Open estimate ' + est.number, () => openDocFromDoc(est.id));
+    if (d.billed) A('Open invoice ' + ((docById(d.billed) || {}).number || ''), () => openDocFromDoc(d.billed));
+    else if (d.status === 'Approved' && est && est.billed) A('Bill this on a new invoice', billChangeOrder, '');
+    else if (d.status === 'Approved' && est) acts.appendChild(el('div', 'meta', 'Approved change orders are added automatically when you convert ' + est.number + ' to an invoice.'));
+  }
+  if (d.type === 'invoice') {
+    if (d.status !== 'Void') A('Record payment', paymentSheet, '');
+    if (d.status === 'Draft') A('Mark as sent', () => setStatus('Sent'));
+    if (d.status === 'Void') A('Un-void', () => setStatus('Sent'));
+    else if (d.status !== 'Paid') A('Void invoice', () => setStatus('Void'));
+    if (d.parent && docById(d.parent)) A('Open estimate ' + docById(d.parent).number, () => openDocFromDoc(d.parent));
+  }
+  if (d.type !== 'change') A('Duplicate', duplicateDoc);
+  A('Delete', () => confirmSheet('Delete ' + (docLabel(d) || 'this') + '?',
+    d.type === 'estimate' ? 'Its change orders are deleted too. This can’t be undone from the app.' : 'This can’t be undone from the app.', 'Delete', () => {
+      if (!d._new) {
+        DATA.biz.docs = biz().docs.filter(x => x.id !== d.id && !(d.type === 'estimate' && x.parent === d.id && x.type === 'change'));
+        biz().docs.forEach(x => { if (x.billed === d.id) x.billed = ''; });
+        saveLocal(); enqueue('deleteDoc', { id: d.id }, docLabel(d));
+      }
+      DIRTY = false; ROUTES.pop(); render();
+    }, true), 'ghost dangertext');
+  b.appendChild(acts);
+  openSheet(docLabel(d) || TYPE_LABEL[d.type], b);
+}
+
+/* ===================== expenses ===================== */
+/* Chart of accounts: 5000s are job costs (cost of goods sold), 6000s are overhead. Server sends the same list. */
+const DEFAULT_ACCOUNTS = [
+  ['5000', 'Job materials', 'cogs'], ['5100', 'Subcontractors', 'cogs'], ['5200', 'Job labor', 'cogs'],
+  ['5300', 'Equipment rental', 'cogs'], ['5400', 'Permits & inspections', 'cogs'], ['5500', 'Dump & disposal', 'cogs'],
+  ['6000', 'Fuel', 'expense'], ['6100', 'Vehicle repairs & maintenance', 'expense'], ['6200', 'Tools & small equipment', 'expense'],
+  ['6300', 'Insurance', 'expense'], ['6400', 'Licenses & registrations', 'expense'], ['6500', 'Office, software & phone', 'expense'],
+  ['6600', 'Meals', 'expense'], ['6700', 'Advertising & marketing', 'expense'], ['6800', 'Legal & accounting', 'expense'],
+  ['6900', 'Bank & card fees', 'expense'], ['6990', 'Other expenses', 'expense']
+].map(([code, name, type]) => ({ code, name, type }));
+const accounts = () => (biz().accounts && biz().accounts.length) ? biz().accounts : DEFAULT_ACCOUNTS;
+const acctOf = name => accounts().find(a => a.name === name) || { code: '', name: name || 'Uncategorized', type: 'expense' };
+const acctLabel = name => { const a = acctOf(name); return (a.code ? a.code + ' · ' : '') + a.name; };
+const PAY_METHODS = ['Card', 'Cash', 'Check', 'Zelle', 'Bank transfer', 'Other'];
+let EXP = { period: LS.get('uffg.expPeriod', 'month'), cat: '' };
+const RECEIPTS = {};                       // id -> data URL, this session only
+
+/* ---- periods ---- */
+function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function periodRange(p) {
+  const t = new Date(), Y = t.getFullYear(), M = t.getMonth();
+  if (p === 'month') return [ymd(new Date(Y, M, 1)), ymd(new Date(Y, M + 1, 0))];
+  if (p === 'last') return [ymd(new Date(Y, M - 1, 1)), ymd(new Date(Y, M, 0))];
+  if (p === 'quarter') { const q = Math.floor(M / 3) * 3; return [ymd(new Date(Y, q, 1)), ymd(new Date(Y, q + 3, 0))]; }
+  if (p === 'year') return [Y + '-01-01', Y + '-12-31'];
+  if (p === 'lastyear') return [(Y - 1) + '-01-01', (Y - 1) + '-12-31'];
+  return ['0000-00-00', '9999-12-31'];
+}
+const inRange = (date, r) => !!date && date >= r[0] && date <= r[1];
+const PERIOD_LABEL = { month: 'This month', last: 'Last month', quarter: 'This quarter', year: 'This year', lastyear: 'Last year', all: 'All time' };
+const sum = xs => r2(xs.reduce((s, x) => s + (Number(x.amount) || 0), 0));
+const booked = x => x.status !== 'Review';
+
+/* Expenses hang off a project (job). A job is an estimate, or an invoice that didn't come from one. */
+function jobKeyOf(d) {
+  if (!d) return '';
+  if (d.type === 'change') return d.parent;
+  if (d.type === 'invoice' && d.parent && docById(d.parent)) return d.parent;
+  return d.id;
+}
+function jobOptions() {
+  return docsOf('estimate').filter(d => d.status !== 'Declined')
+    .concat(docsOf('invoice').filter(i => !(i.parent && docById(i.parent))))
+    .sort(byNewest);
+}
+function jobLabel(id) {
+  const d = docById(id); if (!d) return '';
+  return [d.number || 'New', d.title || custName(d.customer)].filter(Boolean).join(' · ');
+}
+function jobExpenses(d) {
+  const key = jobKeyOf(d);
+  return expensesAll().filter(x => booked(x) && x.job && (x.job === key || x.job === d.id));
+}
+const vendorKey = v => String(v || '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '').slice(0, 14);
+/* Last account this vendor was booked to, so the second Home Depot receipt books itself. */
+function suggestAccount(vendor) {
+  const k = vendorKey(vendor); if (!k) return '';
+  const hit = expenses().filter(x => booked(x) && x.account && vendorKey(x.vendor) === k)
+    .sort((a, b) => (b.created || '').localeCompare(a.created || ''))[0];
+  return hit ? hit.account : '';
+}
+/* Same rule as the server: same photo, or same vendor + amount within 3 days. */
+function localDuplicates(x, hash) {
+  const vk = vendorKey(x.vendor), amt = r2(x.amount), t = x.date ? new Date(x.date).getTime() : NaN;
+  return expenses().filter(e => e.id !== x.id).map(e => {
+    if (hash && e.hash === hash) return { e, reason: 'Same photo' };
+    if (amt > 0 && Math.abs(r2(e.amount) - amt) < 0.005) {
+      const ev = vendorKey(e.vendor), et = new Date(e.date).getTime();
+      if ((!vk || !ev || ev === vk) && (isNaN(t) || isNaN(et) || Math.abs(et - t) <= 3 * 864e5)) return { e, reason: 'Same vendor, amount and date' };
+    }
+    return null;
+  }).filter(Boolean);
+}
+async function fileHash(file) {
+  try {
+    const buf = await file.arrayBuffer();
+    const h = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 40);
+  } catch (e) { return ''; }
+}
+
+/* ---- Expenses tab ---- */
+function vExpenses(v) {
+  const all = expenses(), rng = periodRange(EXP.period);
+  const live = all.filter(booked), drafts = all.filter(x => !booked(x));
+  const inPeriod = live.filter(x => EXP.period === 'all' || inRange(x.date, rng));
+  const yr = live.filter(x => inRange(x.date, periodRange('year')));
+  const s = el('div', 'stat');
+  s.innerHTML = `<div><b>${money(sum(inPeriod))}</b><span>${esc(PERIOD_LABEL[EXP.period])} · ${inPeriod.length}</span></div>
+    <div class="tap" id="pnlTile"><b>${money(sum(yr))}</b><span>This year · P&amp;L ›</span></div>`;
+  v.appendChild(s);
+  s.querySelector('#pnlTile').onclick = () => go('pnl');
+
+  const g = el('div', 'grid3'); g.style.marginBottom = '10px';
+  g.appendChild(btn('📷 Scan', () => expenseSheet(null, '', { scan: true })));
+  g.appendChild(btn('⬆ Upload', () => bulkPick(), 'ghost'));
+  g.appendChild(btn('+ By hand', () => expenseSheet(null), 'ghost'));
+  v.appendChild(g);
+
+  if (drafts.length) {
+    v.appendChild(el('h2', null, 'To review (' + drafts.length + ')'));
+    v.appendChild(el('div', 'sub', 'Uploaded receipts. Check the amount, pick the account and project, then book them.'));
+    drafts.sort((a, b) => (b.created || '').localeCompare(a.created || '')).forEach(x => v.appendChild(expenseCard(x)));
+    v.appendChild(el('div', 'gap'));
+  }
+
+  chipRow(v, [['month', 'This month'], ['last', 'Last month'], ['year', 'This year'], ['all', 'All']], EXP.period, p => {
+    EXP.period = p; EXP.cat = ''; LS.set('uffg.expPeriod', p); render();
+  });
+
+  // where the money went, by account
+  const byAcct = {};
+  inPeriod.forEach(x => { const k = x.account || 'Uncategorized'; byAcct[k] = r2((byAcct[k] || 0) + x.amount); });
+  const rows = Object.keys(byAcct).sort((a, b) => byAcct[b] - byAcct[a]);
+  if (rows.length) {
+    const top = byAcct[rows[0]] || 1;
+    const cc = el('div', 'card cats');
+    rows.forEach(c => {
+      const r = el('div', 'catrow' + (EXP.cat === c ? ' on' : ''),
+        `<div class="row"><span class="grow">${esc(acctLabel(c))}</span><b>${money(byAcct[c])}</b></div><div class="bar"><i class="${acctOf(c).type}" style="width:${Math.max(3, byAcct[c] / top * 100)}%"></i></div>`);
+      r.onclick = () => { EXP.cat = EXP.cat === c ? '' : c; paint(); cc.querySelectorAll('.catrow').forEach(n => n.classList.toggle('on', n === r && EXP.cat === c)); };
+      cc.appendChild(r);
+    });
+    cc.appendChild(el('div', 'legend', '<i class="cogs"></i> Job costs &nbsp; <i class="expense"></i> Overhead'));
+    v.appendChild(cc);
+  }
+  searchBox(v, 'Search vendor, project, note', FILTER.q, q => { FILTER.q = q; paint(); });
+  const list = el('div'); v.appendChild(list);
+  const exp = btn('Export CSV for your accountant', () => exportExpensesCsv(currentList()), 'ghost');
+  exp.classList.add('wide'); exp.style.marginTop = '6px';
+  v.appendChild(exp);
+
+  function currentList() {
+    const q = FILTER.q.toLowerCase();
+    return inPeriod.filter(x => (!EXP.cat || (x.account || 'Uncategorized') === EXP.cat) &&
+      (!q || [x.vendor, x.account, x.note, x.method, jobLabel(x.job), x.job && docById(x.job) ? custName(docById(x.job).customer) : ''].join(' ').toLowerCase().includes(q)))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created || '').localeCompare(a.created || ''));
+  }
+  function paint() {
+    const items = currentList(); list.innerHTML = '';
+    if (!items.length) {
+      list.appendChild(el('div', 'empty', live.length ? 'No expenses here.' : 'No ' + BIZ_NAMES[BIZ] + ' expenses yet. Scan a receipt or upload them from your photos.'));
+      return;
+    }
+    let lastDate = '';
+    items.forEach(x => {
+      if (x.date !== lastDate) { lastDate = x.date; list.appendChild(el('div', 'dhead', esc(fmtDate(x.date) || 'No date'))); }
+      list.appendChild(expenseCard(x));
+    });
+    if (EXP.cat) list.appendChild(el('div', 'meta r', 'Showing ' + esc(acctLabel(EXP.cat)) + ' · ' + money(sum(items))));
+  }
+  paint();
+}
+
+function expenseCard(x) {
+  const flags = (x.status === 'Review' ? '<span class="pill warn">Review</span>' : '') + (x.dupOf ? '<span class="pill bad">Possible duplicate</span>' : '');
+  return card(`<div class="row"><div class="grow"><div class="ttl">${esc(x.vendor || 'Unknown vendor')}${x.receipt ? ' <span class="clip" title="Receipt saved">📎</span>' : ''}</div>
+    <div class="meta">${esc([x.account ? acctLabel(x.account) : 'No account', jobLabel(x.job), x.method].filter(Boolean).join(' · '))}</div>
+    ${x.status === 'Review' ? `<div class="meta">${esc(fmtDate(x.date))}</div>` : ''}
+    ${x.note ? `<div class="meta clamp">${esc(x.note)}</div>` : ''}</div><div class="rcol"><div class="amt">${x.amount ? money(x.amount) : '—'}</div>${flags}</div></div>`, () => expenseSheet(x));
+}
+
+function shrinkImage(file, max, q) {
+  max = max || 1600; q = q || 0.72;
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      let w = img.naturalWidth, h = img.naturalHeight; const k = Math.min(1, max / Math.max(w, h));
+      w = Math.round(w * k); h = Math.round(h * k);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      const d = c.toDataURL('image/jpeg', q); URL.revokeObjectURL(url);
+      res({ data: d.split(',')[1], type: 'image/jpeg', preview: d });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Could not read that photo.')); };
+    img.src = url;
+  });
+}
+
+/* ---- upload several receipts from the photo album ---- */
+let BULK_INPUT = null;
+function bulkPick() {
+  if (!navigator.onLine) return toast('Uploading receipts needs signal. Try again when you have it.', true);
+  if (!BULK_INPUT) {
+    BULK_INPUT = el('input'); BULK_INPUT.type = 'file'; BULK_INPUT.accept = 'image/*'; BULK_INPUT.multiple = true;
+    BULK_INPUT.className = 'hide'; BULK_INPUT.id = 'bulkFiles'; document.body.appendChild(BULK_INPUT);
+    BULK_INPUT.onchange = () => { const fs = Array.from(BULK_INPUT.files || []); BULK_INPUT.value = ''; if (fs.length) bulkUpload(fs); };
+  }
+  BULK_INPUT.click();
+}
+async function bulkUpload(files) {
+  const business = BIZ, results = [];
+  const b = el('div');
+  b.innerHTML = `<div class="scanstat busy" id="bkst">Starting…</div><div id="bkl"></div>`;
+  openSheet('Uploading ' + files.length + ' receipt' + (files.length > 1 ? 's' : '') + ' · ' + BIZ_NAMES[business], b);
+  $('#scrim').onclick = () => {};                       // keep it open until done
+  for (let i = 0; i < files.length; i++) {
+    $('#bkst').textContent = 'Reading ' + (i + 1) + ' of ' + files.length + '…';
+    let line;
+    try {
+      const hash = await fileHash(files[i]);
+      const img = await shrinkImage(files[i], 1800, 0.8);
+      const r = await call('scanReceipt', { business, image: { data: img.data, type: img.type }, hash, createDraft: true, skipIfSamePhoto: true, id: uid() });
+      if (r.skipped) line = `<b>Skipped</b> — already uploaded (${esc(r.duplicates[0].vendor || 'receipt')} ${money(r.duplicates[0].amount)}, ${esc(fmtDate(r.duplicates[0].date))})`;
+      else {
+        if (!biz().expenses) biz().expenses = [];
+        upsertLocal(biz().expenses, r.expense); RECEIPTS[r.expense.id] = img.preview;
+        line = `${esc(r.vendor || 'Unknown vendor')} · ${r.total ? money(r.total) : 'no total found'}` +
+          (r.duplicates.length ? ` · <span class="pill bad">Possible duplicate</span>` : '');
+      }
+    } catch (e) { line = '<span class="dangertext">Couldn’t upload: ' + esc(e.message) + '</span>'; }
+    results.push(line);
+    $('#bkl').innerHTML = results.map((l, k) => `<div class="line row"><span class="grow">${k + 1}. ${l}</span></div>`).join('');
+  }
+  saveLocal();
+  const st = $('#bkst'); st.classList.remove('busy');
+  st.textContent = 'Done. They’re saved to Drive and waiting in “To review”.';
+  const ok = btn('Review them', () => { closeSheet(); goTab('expenses'); }); ok.classList.add('wide'); ok.style.marginTop = '10px';
+  b.appendChild(ok);
+  $('#scrim').onclick = closeSheet;
+}
+
+/* ---- one expense: add, review, edit ---- */
+function expenseSheet(x, presetJob, opts) {
+  opts = opts || {};
+  const isNew = !x;
+  x = x ? clone(x) : { id: uid(), business: BIZ, status: 'Booked', date: today(), vendor: '', account: '', amount: 0, method: 'Card', job: presetJob || '', note: '', receipt: false };
+  const reviewing = x.status === 'Review';
+  let pending = null, removeReceipt = false, scanned = null, preview = null, status = '', busy = false, hash = '', notDup = false, serverDups = [];
+  const touched = {};
+  const vendors = [...new Set(expenses().map(e => e.vendor).filter(Boolean))].slice(0, 80);
+  const jobs = jobOptions();
+  if (x.job && !jobs.find(j => j.id === x.job) && docById(x.job)) jobs.unshift(docById(x.job));
+  const acctOpts = sel => ['cogs', 'expense'].map(t => `<optgroup label="${t === 'cogs' ? 'Job costs (cost of goods sold)' : 'Overhead (operating expenses)'}">` +
+    accounts().filter(a => a.type === t).map(a => `<option value="${esc(a.name)}" ${a.name === sel ? 'selected' : ''}>${esc(a.code + ' · ' + a.name)}</option>`).join('') + '</optgroup>').join('');
+  const b = el('div');
+  b.innerHTML =
+    `<div id="xdup"></div>` +
+    `<div class="grid2">` + field('Amount $', `<input id="xam" class="money" type="number" inputmode="decimal" step="0.01" value="${x.amount || ''}" placeholder="0.00">`) +
+    field('Date', `<input id="xdt" type="date" value="${esc(x.date)}">`) + `</div>` +
+    field('Vendor', `<input id="xvn" list="xvl" value="${esc(x.vendor)}" placeholder="Home Depot, Shell…" autocomplete="off"><datalist id="xvl">${vendors.map(v => `<option value="${esc(v)}">`).join('')}</datalist>`) +
+    field('Book to account', `<select id="xac"><option value="">Pick an account…</option>${acctOpts(x.account)}</select><div class="hint" id="xah"></div>`) +
+    field('Project (for job costing)', `<select id="xjb"><option value="">No project — general overhead</option>${jobs.map(j => `<option value="${esc(j.id)}" ${j.id === x.job ? 'selected' : ''}>${esc(jobLabel(j.id) + ' — ' + custName(j.customer))}</option>`).join('')}</select>`) +
+    `<div class="grid2">` + field('Paid with', `<select id="xmt">${PAY_METHODS.map(m => `<option ${m === x.method ? 'selected' : ''}>${m}</option>`).join('')}</select>`) +
+    field('Note', `<input id="xnt" value="${esc(x.note)}" placeholder="What it was for">`) + `</div>` +
+    `<label>Receipt</label><div class="receipt" id="xrc"></div>
+     <input id="xfile" type="file" accept="image/*" class="hide">`;
+  const acts = el('div', 'actions');
+  acts.appendChild(btn(reviewing ? 'Book expense' : (isNew ? 'Save expense' : 'Save'), () => {
+    if (busy) return toast('Still reading the receipt — one sec.', true);
+    x.amount = r2($('#xam').value);
+    if (x.amount <= 0) return toast('Enter the amount.', true);
+    x.account = $('#xac').value;
+    if (!x.account) return toast('Pick the account to book it to.', true);
+    x.date = $('#xdt').value || today(); x.vendor = $('#xvn').value.trim();
+    x.method = $('#xmt').value; x.job = $('#xjb').value; x.note = $('#xnt').value.trim();
+    x.status = 'Booked';
+    if (pending || scanned) { x.receipt = true; RECEIPTS[x.id] = preview; removeReceipt = false; }
+    if (removeReceipt) { x.receipt = false; delete RECEIPTS[x.id]; }
+    const dupsNow = notDup ? [] : localDuplicates(x, hash);
+    x.dupOf = dupsNow.length ? dupsNow[0].e.id : '';
+    if (hash) x.hash = hash;
+    if (!biz().expenses) biz().expenses = [];
+    upsertLocal(biz().expenses, Object.assign({ created: new Date().toISOString() }, x)); saveLocal();
+    const payload = Object.assign({}, x); delete payload.receipt; delete payload.dupOf; delete payload.link;
+    if (scanned) { payload.receiptFile = scanned.fileId; payload.scanText = scanned.text; }
+    else if (pending) payload.receipt = { data: pending.data, type: pending.type };
+    if (removeReceipt) payload.removeReceipt = true;
+    if (notDup) payload.notDuplicate = true;
+    enqueue('saveExpense', payload, 'Expense ' + money(x.amount));
+    closeSheet(); toast(reviewing ? 'Booked to ' + acctOf(x.account).name : 'Expense saved'); render();
+  }));
+  if (!isNew) acts.appendChild(btn(reviewing ? 'Delete — not a business expense' : 'Delete expense', () => confirmSheet('Delete this expense?', (x.amount ? money(x.amount) : 'This receipt') + (x.vendor ? ' at ' + x.vendor : '') + '. The photo stays in Drive.', 'Delete', () => {
+    biz().expenses = expensesAll().filter(e => e.id !== x.id); saveLocal();
+    enqueue('deleteExpense', { id: x.id }, 'Expense'); render();
+  }, true), 'ghost dangertext'));
+  b.appendChild(acts);
+  openSheet(reviewing ? 'Review receipt · ' + BIZ_NAMES[x.business || BIZ] : isNew ? 'New expense · ' + BIZ_NAMES[x.business || BIZ] : 'Expense', b);
+
+  // account suggestion from the vendor's history
+  const hint = $('#xah');
+  function suggest() {
+    if (touched.xac) { hint.textContent = ''; return; }
+    const sug = suggestAccount($('#xvn').value);
+    if (sug && $('#xac').value !== sug) {
+      if (!$('#xac').value) { $('#xac').value = sug; hint.textContent = 'Booked here last time for this vendor.'; }
+      else hint.innerHTML = `Last time: <button class="link" type="button">${esc(acctLabel(sug))}</button>`;
+      const l = hint.querySelector('button'); if (l) l.onclick = () => { $('#xac').value = sug; touched.xac = true; hint.textContent = ''; };
+    } else if (sug) hint.textContent = 'Booked here last time for this vendor.';
+    else hint.textContent = '';
+  }
+  // duplicate warning, live
+  function paintDup() {
+    const box = $('#xdup'); if (!box) return;
+    const cur = { id: x.id, vendor: $('#xvn').value, amount: $('#xam').value, date: $('#xdt').value };
+    const found = notDup ? [] : localDuplicates(cur, hash).map(d => ({ id: d.e.id, vendor: d.e.vendor, amount: d.e.amount, date: d.e.date, reason: d.reason }))
+      .concat(serverDups.filter(sd => !localDuplicates(cur, hash).some(d => d.e.id === sd.id)));
+    if (!found.length && !(x.dupOf && !notDup)) { box.innerHTML = ''; return; }
+    const d = found[0] || (docById(x.dupOf) || expensesAll().find(e => e.id === x.dupOf) || {});
+    box.innerHTML = `<div class="dupwarn"><b>⚠ Possible duplicate</b><div>${esc(d.reason || 'Matches another expense')}: ${esc(d.vendor || 'receipt')} · ${d.amount ? money(d.amount) : ''} · ${esc(fmtDate(d.date))}</div>
+      <div class="grid2" style="margin-top:8px"><button class="btn sm ghost" type="button" id="dupOpen">Open the other one</button><button class="btn sm ghost" type="button" id="dupNo">Not a duplicate</button></div></div>`;
+    $('#dupNo').onclick = () => { notDup = true; serverDups = []; paintDup(); };
+    $('#dupOpen').onclick = () => { const o = expensesAll().find(e => e.id === d.id); if (o) expenseSheet(o); };
+  }
+  b.addEventListener('input', e => { if (e.target.id) touched[e.target.id] = true; if (e.target.id === 'xvn') suggest(); if (['xvn', 'xam', 'xdt'].includes(e.target.id)) paintDup(); });
+  b.addEventListener('change', e => { if (e.target.id) touched[e.target.id] = true; if (e.target.id === 'xac') hint.textContent = ''; });
+
+  const rc = $('#xrc'), fileIn = $('#xfile');
+  function paintReceipt() {
+    rc.innerHTML = '';
+    if (status) rc.appendChild(el('div', 'scanstat' + (busy ? ' busy' : ''), status));
+    const shown = preview || (!removeReceipt && RECEIPTS[x.id]);
+    if (shown) {
+      const im = el('img'); im.src = shown; im.alt = 'Receipt'; im.onclick = () => window.open(shown, '_blank');
+      rc.appendChild(im);
+    }
+    const row = el('div', 'grid2');
+    if (shown || (x.receipt && !removeReceipt)) {
+      if (!shown) row.appendChild(btn('View receipt', async (e) => {
+        const t = e.target; t.disabled = true; t.textContent = 'Loading…';
+        try { const r = await call('getReceipt', { id: x.id }); RECEIPTS[x.id] = 'data:' + r.type + ';base64,' + r.data; paintReceipt(); }
+        catch (err) { toast(navigator.onLine ? err.message : 'Receipts open when you have signal.', true); t.disabled = false; t.textContent = 'View receipt'; }
+      }, 'ghost'));
+      row.appendChild(btn('Replace photo', () => fileIn.click(), 'ghost'));
+      row.appendChild(btn('Remove', () => { pending = null; scanned = null; preview = null; status = ''; removeReceipt = true; paintReceipt(); }, 'ghost dangertext'));
+    } else {
+      const add = btn('📷  Take or choose a receipt photo', () => fileIn.click(), 'ghost'); add.style.gridColumn = '1 / -1';
+      row.appendChild(add);
+    }
+    rc.appendChild(row);
+  }
+  fileIn.onchange = async () => {
+    const f = fileIn.files && fileIn.files[0]; fileIn.value = ''; if (!f) return;
+    let img;
+    try { [img, hash] = await Promise.all([shrinkImage(f, 1800, 0.8), fileHash(f)]); } catch (e) { return toast(e.message, true); }
+    preview = img.preview; removeReceipt = false; scanned = null; pending = null;
+    paintDup();
+    if (!navigator.onLine) {
+      pending = img; status = 'No signal — the photo uploads to Drive when you save. Type the details.'; paintReceipt(); return;
+    }
+    busy = true; status = 'Saving to Drive and reading the receipt…'; paintReceipt();
+    try {
+      const r = await call('scanReceipt', { business: x.business || BIZ, image: { data: img.data, type: img.type }, hash, id: x.id });
+      scanned = { fileId: r.fileId, text: r.text || '' };
+      serverDups = r.duplicates || [];
+      const set = (id, val) => { const n = $('#' + id); if (n && val && !touched[id]) n.value = val; };
+      set('xam', r.total ? r.total.toFixed(2) : '');
+      set('xvn', r.vendor);
+      if (r.date) set('xdt', r.date);
+      if (r.account) set('xac', r.account);
+      if (r.method) set('xmt', r.method);
+      suggest();
+      const got = [r.vendor, r.total ? money(r.total) : '', r.date ? fmtDate(r.date) : ''].filter(Boolean);
+      status = !r.read ? '✓ Saved to Drive. Couldn’t read the text — type the details.'
+        : got.length ? '✓ Saved to Drive · read ' + got.join(' · ') + '. Check it, then save.'
+        : '✓ Saved to Drive. Couldn’t find a total — type the details.';
+    } catch (e) {
+      pending = img;
+      status = 'Couldn’t reach the server — the photo uploads when you save. Type the details.';
+    }
+    busy = false; paintReceipt(); paintDup();
+  };
+  paintReceipt(); paintDup(); suggest();
+  if (opts.scan) fileIn.click();                       // straight to camera / photo library
+  else if (isNew) setTimeout(() => { const a = $('#xam'); if (a) a.focus(); }, 250);
+}
+
+function csvCell(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+async function shareOrDownload(blob, name, type) {
+  const file = new File([blob], name, { type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); } catch (e) { /* cancelled */ }
+    return;
+  }
+  const a = el('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+async function exportExpensesCsv(list) {
+  if (!list.length) return toast('Nothing to export.', true);
+  const rows = [['Date', 'Business', 'Vendor', 'Account #', 'Account', 'Type', 'Amount', 'Paid with', 'Project', 'Customer', 'Note', 'Receipt link']];
+  list.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')).forEach(x => {
+    const j = docById(x.job), a = acctOf(x.account);
+    rows.push([x.date, companyOf(x.business || 'uffg').name || BIZ_NAMES[x.business || 'uffg'], x.vendor, a.code, a.name,
+      a.type === 'cogs' ? 'Job cost' : 'Overhead', r2(x.amount).toFixed(2), x.method, j ? jobLabel(j.id) : '', j ? custName(j.customer) : '', x.note, x.link || (x.receipt ? 'Yes' : '')]);
+  });
+  rows.push(['', '', '', '', '', 'Total', sum(list).toFixed(2), '', '', '', '', '']);
+  const csv = rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+  const name = (BIZ_NAMES[BIZ] + ' expenses - ' + PERIOD_LABEL[EXP.period] + (EXP.cat ? ' - ' + EXP.cat : '')).replace(/[\\/:*?"<>|]+/g, '') + '.csv';
+  window.__lastCsv = csv;
+  await shareOrDownload(new Blob([csv], { type: 'text/csv' }), name, 'text/csv');
+}
+
+/* Shown inside an estimate or invoice: what the job cost and what's left. */
+function jobCostsSection(v, d) {
+  const xs = jobExpenses(d).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const key = jobKeyOf(d), est = docById(key);
+  const revenue = est && est.type === 'estimate' ? contractTotal(est) : totals(d).total;
+  const cost = sum(xs), profit = r2(revenue - cost);
+  v.appendChild(el('h2', null, 'Job costs'));
+  const c = el('div', 'card');
+  c.innerHTML = `<div class="trow"><span>${est && est.type === 'estimate' ? 'Contract' : 'Invoice'} total</span><span>${money(revenue)}</span></div>
+    <div class="trow"><span>Expenses (${xs.length})</span><span>-${money(cost)}</span></div>
+    <div class="trow big ${profit < 0 ? 'neg' : ''}"><span>Profit${revenue ? ' · ' + Math.round(profit / revenue * 100) + '%' : ''}</span><span>${money(profit)}</span></div>`;
+  xs.slice(0, 6).forEach(x => {
+    const r = el('div', 'row line'); r.style.cursor = 'pointer';
+    r.innerHTML = `<div class="grow"><div class="ttl" style="font-weight:500">${esc(x.vendor || 'Expense')}${x.receipt ? ' 📎' : ''}</div><div class="meta">${esc(fmtDate(x.date) + ' · ' + acctOf(x.account).name)}</div></div><div class="amt">${money(x.amount)}</div>`;
+    r.onclick = () => expenseSheet(x);
+    c.appendChild(r);
+  });
+  if (xs.length > 6) c.appendChild(el('div', 'meta', '+ ' + (xs.length - 6) + ' more in Expenses'));
+  const add = btn('+ Add expense to this project', () => expenseSheet(null, key), 'ghost');
+  add.classList.add('wide'); add.style.marginTop = '10px';
+  c.appendChild(add);
+  v.appendChild(c);
+}
+
+/* ===================== profit & loss ===================== */
+let PNL = { period: LS.get('uffg.pnlPeriod', 'year'), basis: LS.get('uffg.pnlBasis', 'cash') };
+
+/* Income without sales tax: tax collected belongs to the state, not the business. */
+function netOfTax(inv, amount) {
+  const t = totals(inv); if (!t.total) return 0;
+  return r2(amount * (t.total - t.tax) / t.total);
+}
+function pnlData(business, period, basis) {
+  const rng = periodRange(period), inB = x => (x.business || 'uffg') === business;
+  const invs = biz().docs.filter(d => d.type === 'invoice' && inB(d) && d.status !== 'Void' && d.status !== 'Draft');
+  const incomeItems = [];
+  if (basis === 'cash') {
+    biz().payments.forEach(p => {
+      const inv = invs.find(i => i.id === p.invoice);
+      if (inv && (period === 'all' || inRange(p.date, rng))) incomeItems.push({ inv, amount: netOfTax(inv, p.amount), date: p.date });
+    });
+  } else {
+    invs.forEach(inv => { if (period === 'all' || inRange(inv.date, rng)) { const t = totals(inv); incomeItems.push({ inv, amount: r2(t.total - t.tax), date: inv.date }); } });
+  }
+  const income = r2(incomeItems.reduce((s, i) => s + i.amount, 0));
+  const xs = expensesAll().filter(x => inB(x) && booked(x) && (period === 'all' || inRange(x.date, rng)));
+  const group = type => {
+    const m = {};
+    xs.filter(x => acctOf(x.account).type === type).forEach(x => { m[x.account || 'Uncategorized'] = r2((m[x.account || 'Uncategorized'] || 0) + x.amount); });
+    return Object.keys(m).map(k => ({ account: k, label: acctLabel(k), amount: m[k] })).sort((a, b) => (acctOf(a.account).code || '9').localeCompare(acctOf(b.account).code || '9'));
+  };
+  const cogs = group('cogs'), opex = group('expense');
+  const cogsT = r2(cogs.reduce((s, r) => s + r.amount, 0)), opexT = r2(opex.reduce((s, r) => s + r.amount, 0));
+  const gross = r2(income - cogsT), net = r2(gross - opexT);
+  // by project: income and job costs tied to each job
+  const jobs = {};
+  incomeItems.forEach(i => { const k = jobKeyOf(i.inv); (jobs[k] = jobs[k] || { inc: 0, cost: 0 }).inc = r2(jobs[k].inc + i.amount); });
+  xs.filter(x => x.job).forEach(x => { (jobs[x.job] = jobs[x.job] || { inc: 0, cost: 0 }).cost = r2(jobs[x.job].cost + x.amount); });
+  const projects = Object.keys(jobs).map(k => ({ id: k, label: jobLabel(k) || 'Unknown project', customer: docById(k) ? custName(docById(k).customer) : '',
+    inc: jobs[k].inc, cost: jobs[k].cost, profit: r2(jobs[k].inc - jobs[k].cost) })).sort((a, b) => b.inc - a.inc || b.cost - a.cost);
+  const drafts = expensesAll().filter(x => inB(x) && !booked(x));
+  return { rng, income, incomeCount: incomeItems.length, cogs, cogsT, gross, opex, opexT, net, projects, drafts: drafts.length, draftsT: sum(drafts) };
+}
+
+function vPnl(v) {
+  const d = pnlData(BIZ, PNL.period, PNL.basis);
+  chipRow(v, [['month', 'This month'], ['last', 'Last month'], ['quarter', 'Quarter'], ['year', 'This year'], ['lastyear', 'Last year'], ['all', 'All']], PNL.period, p => {
+    PNL.period = p; LS.set('uffg.pnlPeriod', p); render();
+  });
+  const seg = el('div', 'seg two');
+  [['cash', 'Cash basis'], ['accrual', 'Accrual basis']].forEach(([k, lab]) => {
+    const b = el('button', PNL.basis === k ? 'on' : '', lab);
+    b.onclick = () => { PNL.basis = k; LS.set('uffg.pnlBasis', k); render(); };
+    seg.appendChild(b);
+  });
+  v.appendChild(seg);
+  v.appendChild(el('div', 'sub', PNL.basis === 'cash' ? 'Income counts when the customer pays you.' : 'Income counts when you send the invoice, paid or not.'));
+  if (d.drafts) {
+    const w = el('div', 'dupwarn tap', `<b>${d.drafts} receipt${d.drafts > 1 ? 's' : ''} still to review</b> (${money(d.draftsT)}) — not in these numbers yet.`);
+    w.onclick = () => goTab('expenses'); v.appendChild(w);
+  }
+  const margin = n => d.income ? ' <span class="pct">' + Math.round(n / d.income * 100) + '%</span>' : '';
+  const c = el('div', 'card pnl');
+  let h = `<div class="kicker">${esc(companyOf(BIZ).name || BIZ_NAMES[BIZ])}</div><div class="meta">${esc(PERIOD_LABEL[PNL.period])}${PNL.period !== 'all' ? ' · ' + esc(fmtDate(d.rng[0])) + ' – ' + esc(fmtDate(d.rng[1])) : ''}</div>
+    <div class="psec">Income</div>
+    <div class="trow"><span>4000 · Job income${d.incomeCount ? ' (' + d.incomeCount + ')' : ''}</span><span>${money(d.income)}</span></div>
+    <div class="trow sub1"><span>Total income</span><span>${money(d.income)}</span></div>
+    <div class="psec">Cost of jobs</div>`;
+  h += d.cogs.length ? d.cogs.map(r => `<div class="trow tap" data-acct="${esc(r.account)}"><span>${esc(r.label)}</span><span>${money(r.amount)}</span></div>`).join('') : '<div class="trow"><span>None</span><span></span></div>';
+  h += `<div class="trow sub1"><span>Total cost of jobs</span><span>${money(d.cogsT)}</span></div>
+    <div class="trow big"><span>Gross profit${margin(d.gross)}</span><span>${money(d.gross)}</span></div>
+    <div class="psec">Operating expenses</div>`;
+  h += d.opex.length ? d.opex.map(r => `<div class="trow tap" data-acct="${esc(r.account)}"><span>${esc(r.label)}</span><span>${money(r.amount)}</span></div>`).join('') : '<div class="trow"><span>None</span><span></span></div>';
+  h += `<div class="trow sub1"><span>Total operating expenses</span><span>${money(d.opexT)}</span></div>
+    <div class="trow big total ${d.net < 0 ? 'neg' : ''}"><span>Net profit${margin(d.net)}</span><span>${money(d.net)}</span></div>`;
+  c.innerHTML = h;
+  c.querySelectorAll('[data-acct]').forEach(r => r.onclick = () => {
+    EXP.cat = r.dataset.acct; EXP.period = ['month', 'last', 'year'].includes(PNL.period) ? PNL.period : 'all';
+    VIEW = 'expenses'; ROUTES = []; render(); window.scrollTo(0, 0);
+  });
+  v.appendChild(c);
+
+  v.appendChild(el('h2', null, 'Profit by project'));
+  if (!d.projects.length) v.appendChild(el('div', 'empty sm', 'Book expenses to a project and record payments to see each job’s profit.'));
+  d.projects.forEach(p => v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">${esc(p.label)}</div>
+      <div class="meta">${esc(p.customer)}${p.customer ? ' · ' : ''}in ${money(p.inc)} · costs ${money(p.cost)}</div></div>
+      <div class="amt ${p.profit < 0 ? 'negtext' : ''}">${money(p.profit)}</div></div>`, docById(p.id) ? () => openDoc(p.id) : null)));
+
+  const pdf = btn('Share P&L as PDF', async () => {
+    const bytes = buildPnlPdf(BIZ, PNL.period, PNL.basis);
+    const name = (BIZ_NAMES[BIZ] + ' P&L - ' + PERIOD_LABEL[PNL.period]).replace(/[\\/:*?"<>|]+/g, '') + '.pdf';
+    window.__lastPnlPdf = bytes;
+    await shareOrDownload(new Blob([bytes], { type: 'application/pdf' }), name, 'application/pdf');
+  }, 'ghost');
+  pdf.classList.add('wide'); pdf.style.marginTop = '12px';
+  v.appendChild(pdf);
+  v.appendChild(el('div', 'sub', 'No balance sheet yet — that needs business bank accounts. Sales tax you collect is left out of income.'));
+}
+
+function buildPnlPdf(business, period, basis) {
+  const d = pnlData(business, period, basis), co = companyOf(business), isUB = business === 'uribest';
+  const C = hexRgb(co.color, isUB ? [31, 79, 180] : [46, 107, 79]), MUT = [110, 116, 124], LINE = [222, 216, 205];
+  const P = new PdfDoc(), M = 64, R = 612 - M;
+  let y = 792 - 56;
+  if (isUB) { P.wordmark(M, y - 22, 22, C); y -= 40; } else { P.logo(M, y - 46, 46, C); y -= 4; }
+  P.text(isUB ? M : M + 58, isUB ? y : y - 16, co.name || BIZ_NAMES[business], { size: 12, bold: true });
+  y -= isUB ? 30 : 64;
+  P.text(306, y, 'Profit & Loss', { size: 20, bold: true, color: C, align: 'center' }); y -= 16;
+  P.text(306, y, PERIOD_LABEL[period] + (period !== 'all' ? ' (' + fmtDate(d.rng[0]) + ' - ' + fmtDate(d.rng[1]) + ')' : '') + ' - ' + (basis === 'cash' ? 'Cash' : 'Accrual') + ' basis', { size: 9.5, color: MUT, align: 'center' });
+  y -= 30;
+  const row = (label, amt, o) => {
+    o = o || {};
+    if (o.bar) { P.rect(M - 6, y - 6, R - M + 12, 19, C); P.text(M, y, label, { size: 10.5, bold: true, color: [255, 255, 255] }); P.text(R, y, money(amt), { size: 10.5, bold: true, color: [255, 255, 255], align: 'right' }); y -= 26; return; }
+    P.text(M + (o.indent ? 14 : 0), y, label, { size: o.bold ? 10.5 : 10, bold: !!o.bold, color: o.mut ? MUT : [21, 24, 28] });
+    if (amt !== null) P.text(R, y, money(amt), { size: o.bold ? 10.5 : 10, bold: !!o.bold, align: 'right' });
+    if (o.rule) P.line(M, y + 13, R, y + 13, LINE, 0.6);
+    y -= o.bold ? 20 : 16;
+  };
+  const head = t => { y -= 4; P.text(M, y, t.toUpperCase(), { size: 8, bold: true, color: C }); y -= 15; };
+  head('Income'); row('4000 - Job income', d.income, { indent: true }); row('Total income', d.income, { bold: true, rule: true });
+  head('Cost of jobs'); (d.cogs.length ? d.cogs : [{ label: 'None', amount: 0 }]).forEach(r => row(r.label.replace(' · ', ' - '), r.amount, { indent: true }));
+  row('Total cost of jobs', d.cogsT, { bold: true, rule: true });
+  row('Gross profit', d.gross, { bar: true });
+  head('Operating expenses'); (d.opex.length ? d.opex : [{ label: 'None', amount: 0 }]).forEach(r => row(r.label.replace(' · ', ' - '), r.amount, { indent: true }));
+  row('Total operating expenses', d.opexT, { bold: true, rule: true });
+  row('Net profit', d.net, { bar: true });
+  if (d.projects.length) {
+    y -= 10; head('Profit by project');
+    d.projects.slice(0, 18).forEach(p => {
+      if (y < 80) { P.addPage(); y = 792 - 56; }
+      P.text(M + 14, y, (p.label + (p.customer ? ' - ' + p.customer : '')).slice(0, 60), { size: 9.5 });
+      P.text(R - 150, y, 'in ' + money(p.inc), { size: 9, color: MUT, align: 'right' });
+      P.text(R - 70, y, 'cost ' + money(p.cost), { size: 9, color: MUT, align: 'right' });
+      P.text(R, y, money(p.profit), { size: 9.5, bold: true, align: 'right' });
+      y -= 14;
+    });
+  }
+  if (d.drafts) { y -= 8; P.text(M, y, d.drafts + ' receipt(s) totaling ' + money(d.draftsT) + ' still to review are not included.', { size: 8.5, color: MUT }); }
+  P.pages.forEach(ops => { P.ops = ops; P.text(306, 30, 'Prepared ' + fmtDate(today()) + ' from the ' + (co.name || '') + ' app. Unaudited.', { size: 7.5, color: MUT, align: 'center' }); });
+  return P.bytes();
+}
+
+/* ===================== price book ===================== */
+function vServices(v) {
+  const add = btn('+ Add a service', () => serviceSheet(null)); add.classList.add('wide'); add.style.marginBottom = '10px';
+  v.appendChild(add);
+  v.appendChild(el('div', 'sub', 'Saved services show up when you add items to an estimate or invoice.'));
+  searchBox(v, 'Search services', FILTER.q, q => { FILTER.q = q; paint(); });
+  const list = el('div'); v.appendChild(list);
+  function paint() {
+    const q = FILTER.q.toLowerCase(); list.innerHTML = '';
+    const items = svcs().filter(s => !q || (s.name + ' ' + s.description).toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+    if (!items.length) list.appendChild(el('div', 'empty', svcs().length ? 'No match.' : 'No ' + BIZ_NAMES[BIZ] + ' services yet.'));
+    items.forEach(s => list.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">${esc(s.name)}</div>
+      <div class="meta clamp">${esc(s.description || '')}</div></div><div class="amt">${money(s.price)}${s.unit ? `<div class="meta r">/${esc(s.unit)}</div>` : ''}</div></div>`, () => serviceSheet(s))));
+  }
+  paint();
+}
+function serviceSheet(s) {
+  const isNew = !s; s = s ? clone(s) : { id: uid(), business: BIZ, name: '', description: '', unit: '', price: 0, taxable: false };
+  const b = el('div');
+  b.innerHTML = field('Service', `<input id="sn" value="${esc(s.name)}" placeholder="Carport install 20x20">`) +
+    field('Description', `<textarea id="sd" rows="3">${esc(s.description)}</textarea>`) +
+    `<div class="grid2">` + field('Price $', `<input id="sp" type="number" inputmode="decimal" step="0.01" value="${s.price || ''}">`) +
+    field('Unit', `<input id="su" value="${esc(s.unit)}" placeholder="ea, hr, sq ft">`) + `</div>
+    <label class="check"><input id="st" type="checkbox" ${s.taxable ? 'checked' : ''}> Taxable</label>`;
+  const acts = el('div', 'actions');
+  acts.appendChild(btn(isNew ? 'Add service' : 'Save', () => {
+    s.name = $('#sn').value.trim(); if (!s.name) return toast('Give it a name.', true);
+    s.description = $('#sd').value.trim(); s.price = r2($('#sp').value); s.unit = $('#su').value.trim(); s.taxable = $('#st').checked;
+    upsertLocal(biz().services, s); saveLocal(); enqueue('saveService', s, s.name); closeSheet(); render();
+  }));
+  if (!isNew) acts.appendChild(btn('Remove from list', () => {
+    DATA.biz.services = biz().services.filter(x => x.id !== s.id); saveLocal(); enqueue('archiveService', { id: s.id }, s.name); closeSheet(); render();
+  }, 'ghost dangertext'));
+  b.appendChild(acts);
+  openSheet(isNew ? 'New service' : 'Edit service', b);
+}
+
+/* ===================== company info ===================== */
+function vCompany(v) {
+  const c = company();
+  v.appendChild(el('div', 'kicker', BIZ_NAMES[BIZ]));
+  const f = el('div', 'card');
+  const F = (k, label, type, ph) => field(label, type === 'area'
+    ? `<textarea data-k="${k}" rows="3" placeholder="${esc(ph || '')}">${esc(c[k] || '')}</textarea>`
+    : `<input data-k="${k}" ${type ? `type="${type}" inputmode="decimal"` : ''} value="${esc(c[k] || '')}" placeholder="${esc(ph || '')}">`);
+  f.innerHTML = `<div class="sub">This is printed at the top of every estimate, invoice and change order.</div>` +
+    F('name', 'Business name') + F('tagline', 'Tagline (optional)', '', 'Built to Last') + F('contact', 'Contact name / title', '', 'Ricardo Uribe, Project Manager') +
+    F('address', 'Address', 'area', 'Street, City, TX ZIP') +
+    `<div class="grid2">` + F('phone', 'Phone') + F('email', 'Email') + `</div>` + F('license', 'License / registration # (optional)') +
+    F('color', 'Brand color on PDFs (hex)', '', '#2E6B4F') +
+    `<div class="grid3">` + F('taxRate', 'Default tax %', 'number') + F('estimateDays', 'Estimate good for (days)', 'number') + F('invoiceDays', 'Invoice due in (days)', 'number') + `</div>` +
+    F('estimateTerms', 'Estimate terms', 'area') + F('invoiceTerms', 'Invoice terms', 'area') + F('changeTerms', 'Change order terms', 'area');
+  v.appendChild(f);
+  v.appendChild(btn('Save company info', () => {
+    const vals = {};
+    f.querySelectorAll('[data-k]').forEach(x => { vals[x.dataset.k] = x.value.trim(); });
+    const all = biz().company && (biz().company.uffg || biz().company.uribest) ? biz().company : { uffg: biz().company || {} };
+    all[BIZ] = Object.assign({}, c, vals); biz().company = all; saveLocal();
+    enqueue('saveCompany', { business: BIZ, values: vals }, 'Company info');
+    toast('Saved'); back();
+  }));
+  v.lastChild.classList.add('wide');
+}
+
+/* ===================== PDF (built in, works offline) ===================== */
+const LOGO_OPS = '0.5259 0.9508 m 0.5259 0.9859 l 0.3406 0.9859 l 0.3406 0.9508 l 0.3660 0.9502 0.3835 0.9443 0.3939 0.9333 c 0.4076 0.9190 0.4108 0.9027 0.4108 0.8449 c 0.4108 0.7142 l 0.4108 0.6609 0.4082 0.6356 0.3998 0.6174 c 0.3809 0.5764 0.3432 0.5556 0.2893 0.5556 c 0.2223 0.5556 0.1846 0.5797 0.1846 0.6843 c 0.1846 0.8923 l 0.1846 0.9333 0.1846 0.9359 0.1892 0.9411 c 0.1950 0.9482 0.2093 0.9508 0.2431 0.9508 c 0.2529 0.9508 l 0.2529 0.9859 l 0.0000 0.9859 l 0.0000 0.9508 l 0.0098 0.9508 l 0.0436 0.9508 0.0572 0.9482 0.0631 0.9411 c 0.0676 0.9359 0.0676 0.9333 0.0676 0.8923 c 0.0676 0.6863 l 0.0676 0.6317 0.0722 0.6044 0.0845 0.5816 c 0.1112 0.5329 0.1742 0.5069 0.2659 0.5069 c 0.3491 0.5069 0.3991 0.5290 0.4310 0.5790 c 0.4492 0.6083 0.4544 0.6375 0.4544 0.7142 c 0.4544 0.8449 l 0.4544 0.9021 0.4576 0.9190 0.4713 0.9333 c 0.4817 0.9443 0.4999 0.9502 0.5259 0.9508 c h 0.9896 0.8169 m 0.9857 0.9859 l 0.5554 0.9859 l 0.5554 0.9508 l 0.5651 0.9508 l 0.5989 0.9508 0.6126 0.9482 0.6184 0.9411 c 0.6230 0.9359 0.6230 0.9333 0.6230 0.8923 c 0.6230 0.6102 l 0.6230 0.5693 0.6230 0.5667 0.6184 0.5615 c 0.6126 0.5543 0.5989 0.5517 0.5651 0.5517 c 0.5554 0.5517 l 0.5554 0.5166 l 0.8154 0.5166 l 0.8154 0.5517 l 0.7985 0.5517 l 0.7640 0.5517 0.7504 0.5543 0.7445 0.5615 c 0.7400 0.5667 0.7400 0.5693 0.7400 0.6102 c 0.7400 0.7415 l 0.7640 0.7415 l 0.8024 0.7415 0.8336 0.7090 0.8407 0.6492 c 0.8758 0.6492 l 0.8758 0.8696 l 0.8407 0.8696 l 0.8336 0.8091 0.8024 0.7773 0.7640 0.7773 c 0.7400 0.7773 l 0.7400 0.8949 l 0.7400 0.9216 0.7413 0.9287 0.7465 0.9365 c 0.7536 0.9463 0.7692 0.9508 0.7959 0.9508 c 0.8082 0.9508 l 0.8563 0.9508 0.8960 0.9333 0.9181 0.9027 c 0.9317 0.8839 0.9460 0.8514 0.9558 0.8169 c h 0.4388 0.3241 m 0.4349 0.4931 l 0.0046 0.4931 l 0.0046 0.4580 l 0.0143 0.4580 l 0.0481 0.4580 0.0618 0.4554 0.0676 0.4483 c 0.0722 0.4431 0.0722 0.4405 0.0722 0.3995 c 0.0722 0.1174 l 0.0722 0.0765 0.0722 0.0739 0.0676 0.0687 c 0.0618 0.0615 0.0481 0.0589 0.0143 0.0589 c 0.0046 0.0589 l 0.0046 0.0238 l 0.2646 0.0238 l 0.2646 0.0589 l 0.2477 0.0589 l 0.2132 0.0589 0.1996 0.0615 0.1937 0.0687 c 0.1892 0.0739 0.1892 0.0765 0.1892 0.1174 c 0.1892 0.2487 l 0.2132 0.2487 l 0.2516 0.2487 0.2828 0.2162 0.2899 0.1564 c 0.3250 0.1564 l 0.3250 0.3768 l 0.2899 0.3768 l 0.2828 0.3163 0.2516 0.2845 0.2132 0.2845 c 0.1892 0.2845 l 0.1892 0.4021 l 0.1892 0.4288 0.1905 0.4359 0.1957 0.4437 c 0.2028 0.4535 0.2184 0.4580 0.2451 0.4580 c 0.2574 0.4580 l 0.3055 0.4580 0.3452 0.4405 0.3673 0.4099 c 0.3809 0.3911 0.3952 0.3586 0.4050 0.3241 c h 1.0000 0.2071 m 1.0000 0.2422 l 0.7692 0.2422 l 0.7692 0.2071 l 0.7816 0.2071 l 0.8355 0.2071 0.8355 0.2052 0.8355 0.1577 c 0.8355 0.0875 0.7972 0.0479 0.7393 0.0479 c 0.6997 0.0479 0.6672 0.0687 0.6509 0.1038 c 0.6334 0.1415 0.6243 0.1941 0.6243 0.2552 c 0.6243 0.3241 0.6373 0.3813 0.6613 0.4203 c 0.6802 0.4509 0.7146 0.4691 0.7530 0.4691 c 0.8297 0.4691 0.8862 0.4125 0.9077 0.3137 c 0.9421 0.3137 l 0.9363 0.5003 l 0.9077 0.5003 l 0.8693 0.4678 l 0.8238 0.4938 0.7920 0.5029 0.7452 0.5029 c 0.6704 0.5029 0.6067 0.4762 0.5586 0.4242 c 0.5144 0.3774 0.4943 0.3228 0.4943 0.2513 c 0.4943 0.1109 0.5866 0.0141 0.7211 0.0141 c 0.7608 0.0141 0.8004 0.0238 0.8303 0.0407 c 0.8466 0.0505 0.8570 0.0589 0.8758 0.0784 c 0.9077 0.0147 l 0.9421 0.0147 l 0.9421 0.1486 l 0.9421 0.1896 0.9421 0.1928 0.9467 0.1980 c 0.9525 0.2045 0.9629 0.2065 1.0000 0.2071 c h';
+const URIBEST_OPS = '1.1413 0.9252 m 1.1413 1.0000 l 0.7465 1.0000 l 0.7465 0.9252 l 0.8006 0.9238 0.8380 0.9114 0.8601 0.8878 c 0.8892 0.8573 0.8961 0.8227 0.8961 0.6994 c 0.8961 0.4211 l 0.8961 0.3075 0.8906 0.2535 0.8726 0.2147 c 0.8324 0.1274 0.7521 0.0831 0.6371 0.0831 c 0.4945 0.0831 0.4141 0.1343 0.4141 0.3573 c 0.4141 0.8006 l 0.4141 0.8878 0.4141 0.8934 0.4238 0.9044 c 0.4363 0.9197 0.4668 0.9252 0.5388 0.9252 c 0.5596 0.9252 l 0.5596 1.0000 l 0.0208 1.0000 l 0.0208 0.9252 l 0.0416 0.9252 l 0.1136 0.9252 0.1427 0.9197 0.1551 0.9044 c 0.1648 0.8934 0.1648 0.8878 0.1648 0.8006 c 0.1648 0.3615 l 0.1648 0.2452 0.1745 0.1870 0.2008 0.1385 c 0.2576 0.0346 0.3920 -0.0208 0.5873 -0.0208 c 0.7645 -0.0208 0.8712 0.0263 0.9391 0.1330 c 0.9778 0.1953 0.9889 0.2576 0.9889 0.4211 c 0.9889 0.6994 l 0.9889 0.8213 0.9958 0.8573 1.0249 0.8878 c 1.0471 0.9114 1.0859 0.9238 1.1413 0.9252 c h 2.3253 0.2271 m 2.2505 0.2271 l 2.2491 0.1399 2.2284 0.0956 2.1868 0.0956 c 2.1508 0.0956 2.1411 0.0997 2.1245 0.2202 c 2.1148 0.2729 l 2.0912 0.3975 2.0428 0.4598 1.9209 0.5000 c 2.1120 0.5360 2.1979 0.6108 2.1979 0.7493 c 2.1979 0.8324 2.1577 0.9030 2.0857 0.9501 c 2.0331 0.9834 1.9403 1.0000 1.8129 1.0000 c 1.2214 1.0000 l 1.2214 0.9252 l 1.2422 0.9252 l 1.3142 0.9252 1.3433 0.9197 1.3558 0.9058 c 1.3655 0.8934 1.3655 0.8892 1.3655 0.8006 c 1.3655 0.2008 l 1.3655 0.1122 1.3655 0.1080 1.3558 0.0956 c 1.3433 0.0817 1.3142 0.0762 1.2422 0.0762 c 1.2214 0.0762 l 1.2214 0.0014 l 1.7755 0.0014 l 1.7755 0.0762 l 1.7394 0.0762 l 1.6674 0.0762 1.6370 0.0817 1.6245 0.0956 c 1.6148 0.1080 1.6148 0.1122 1.6148 0.2008 c 1.6148 0.4806 l 1.6924 0.4806 l 1.7935 0.4806 1.8378 0.4612 1.8489 0.3172 c 1.8558 0.2244 1.8641 0.1648 1.8683 0.1440 c 1.8904 0.0360 1.9707 -0.0208 2.0899 -0.0208 c 2.2394 -0.0208 2.3253 0.0803 2.3253 0.2271 c h 1.9334 0.7424 m 1.9334 0.6011 1.8752 0.5568 1.6910 0.5568 c 1.6148 0.5568 l 1.6148 0.8366 l 1.6148 0.9155 1.6245 0.9252 1.7131 0.9252 c 1.7464 0.9252 l 1.8752 0.9252 1.9334 0.8684 1.9334 0.7424 c h 2.9401 0.0000 m 2.9401 0.0748 l 2.9193 0.0748 l 2.8473 0.0748 2.8168 0.0803 2.8044 0.0956 c 2.7947 0.1066 2.7947 0.1108 2.7947 0.1994 c 2.7947 0.8006 l 2.7947 0.8892 2.7947 0.8934 2.8044 0.9044 c 2.8168 0.9197 2.8473 0.9252 2.9193 0.9252 c 2.9401 0.9252 l 2.9401 1.0000 l 2.4013 1.0000 l 2.4013 0.9252 l 2.4221 0.9252 l 2.4941 0.9252 2.5232 0.9197 2.5357 0.9044 c 2.5454 0.8934 2.5454 0.8878 2.5454 0.8006 c 2.5454 0.1994 l 2.5454 0.1122 2.5454 0.1066 2.5357 0.0956 c 2.5232 0.0803 2.4941 0.0748 2.4221 0.0748 c 2.4013 0.0748 l 2.4013 0.0000 l h 4.0369 0.2618 m 4.0369 0.4030 3.9247 0.4986 3.7183 0.5263 c 3.9053 0.5568 3.9912 0.6288 3.9912 0.7548 c 3.9912 0.8338 3.9496 0.9058 3.8818 0.9446 c 3.8056 0.9875 3.7405 1.0000 3.5757 1.0000 c 3.0411 1.0000 l 3.0411 0.9252 l 3.0618 0.9252 l 3.1339 0.9252 3.1629 0.9197 3.1754 0.9058 c 3.1851 0.8934 3.1851 0.8892 3.1851 0.8006 c 3.1851 0.1994 l 3.1851 0.1122 3.1851 0.1066 3.1754 0.0956 c 3.1629 0.0803 3.1339 0.0748 3.0618 0.0748 c 3.0411 0.0748 l 3.0411 0.0000 l 3.6020 0.0000 l 3.7447 0.0000 3.8194 0.0097 3.8901 0.0416 c 3.9787 0.0803 4.0369 0.1690 4.0369 0.2618 c h 3.7405 0.7493 m 3.7405 0.6288 3.6809 0.5512 3.5023 0.5512 c 3.4344 0.5512 l 3.4344 0.8449 l 3.4344 0.9197 3.4676 0.9252 3.5120 0.9252 c 3.5535 0.9252 l 3.6754 0.9252 3.7405 0.8643 3.7405 0.7493 c h 3.7724 0.2770 m 3.7724 0.1496 3.7031 0.0748 3.5604 0.0748 c 3.5189 0.0748 l 3.4427 0.0748 3.4344 0.0789 3.4344 0.1634 c 3.4344 0.4751 l 3.5300 0.4751 l 3.7114 0.4751 3.7724 0.4058 3.7724 0.2770 c h 5.1143 0.3726 m 5.0409 0.3726 l 4.9827 0.1648 4.8844 0.0748 4.7168 0.0748 c 4.6752 0.0748 l 4.6074 0.0748 4.5894 0.0776 4.5727 0.0942 c 4.5547 0.1108 4.5506 0.1260 4.5506 0.1717 c 4.5506 0.4792 l 4.6018 0.4792 l 4.6822 0.4792 4.7500 0.4100 4.7653 0.2825 c 4.8401 0.2825 l 4.8401 0.7521 l 4.7653 0.7521 l 4.7500 0.6247 4.6822 0.5554 4.6018 0.5554 c 4.5506 0.5554 l 4.5506 0.8061 l 4.5506 0.8629 4.5534 0.8781 4.5644 0.8947 c 4.5797 0.9155 4.6129 0.9252 4.6697 0.9252 c 4.7085 0.9252 l 4.8110 0.9252 4.8955 0.8878 4.9425 0.8227 c 4.9716 0.7812 5.0021 0.7119 5.0229 0.6399 c 5.0949 0.6399 l 5.0866 1.0000 l 4.1572 1.0000 l 4.1572 0.9252 l 4.1780 0.9252 l 4.2500 0.9252 4.2791 0.9197 4.2916 0.9044 c 4.3013 0.8934 4.3013 0.8878 4.3013 0.8006 c 4.3013 0.1994 l 4.3013 0.1122 4.3013 0.1066 4.2916 0.0956 c 4.2791 0.0803 4.2500 0.0748 4.1780 0.0748 c 4.1572 0.0748 l 4.1572 0.0000 l 5.0977 0.0000 l h 6.1030 0.3089 m 6.1030 0.4848 5.9992 0.5831 5.7596 0.6357 c 5.6931 0.6510 l 5.5864 0.6717 5.5864 0.6717 5.5518 0.6842 c 5.4895 0.7064 5.4576 0.7465 5.4576 0.8033 c 5.4576 0.8878 5.5352 0.9488 5.6446 0.9488 c 5.7886 0.9488 5.9036 0.8476 5.9853 0.6510 c 6.0587 0.6510 l 6.0407 1.0097 l 5.9784 1.0097 l 5.9064 0.9460 l 5.8288 0.9986 5.7540 1.0208 5.6571 1.0208 c 5.4438 1.0208 5.2983 0.8961 5.2983 0.7119 c 5.2983 0.5429 5.4230 0.4224 5.6404 0.3823 c 5.7263 0.3657 l 5.8150 0.3490 5.8427 0.3421 5.8759 0.3241 c 5.9147 0.3033 5.9368 0.2618 5.9368 0.2133 c 5.9368 0.1163 5.8579 0.0512 5.7374 0.0512 c 5.5809 0.0512 5.4438 0.1745 5.3676 0.3823 c 5.2970 0.3823 l 5.3053 -0.0097 l 5.3676 -0.0097 l 5.4535 0.0720 l 5.5380 0.0083 5.6266 -0.0208 5.7374 -0.0208 c 5.9535 -0.0208 6.1030 0.1150 6.1030 0.3089 c h 7.1694 0.6247 m 7.1486 1.0000 l 6.2317 1.0000 l 6.2109 0.6247 l 6.2843 0.6247 l 6.3023 0.7271 6.3217 0.7812 6.3550 0.8296 c 6.3993 0.8961 6.4519 0.9280 6.5156 0.9280 c 6.5572 0.9280 6.5655 0.9183 6.5655 0.8712 c 6.5655 0.1994 l 6.5655 0.1122 6.5655 0.1066 6.5558 0.0956 c 6.5433 0.0803 6.5142 0.0748 6.4408 0.0748 c 6.4104 0.0748 l 6.4104 0.0000 l 6.9699 0.0000 l 6.9699 0.0748 l 6.9394 0.0748 l 6.8660 0.0748 6.8370 0.0803 6.8245 0.0956 c 6.8148 0.1066 6.8148 0.1122 6.8148 0.1994 c 6.8148 0.8712 l 6.8148 0.9183 6.8231 0.9280 6.8647 0.9280 c 6.9242 0.9280 6.9699 0.9030 7.0142 0.8463 c 7.0530 0.7950 7.0752 0.7368 7.0960 0.6247 c h';
+const URIBEST_ASPECT = 7.19;
+const HELV = [278,278,355,556,556,889,667,222,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,222,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const HELVB = [278,333,474,556,556,889,722,278,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,278,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+function pdfClean(s) {
+  return String(s == null ? '' : s).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-')
+    .replace(/•/g, '*').replace(/ /g, ' ').replace(/…/g, '...').replace(/×/g, 'x').replace(/[\r\t]/g, ' ');
+}
+function textW(s, size, bold) {
+  const W = bold ? HELVB : HELV; let w = 0;
+  for (const ch of pdfClean(s)) { const c = ch.charCodeAt(0); w += (c >= 32 && c <= 126) ? W[c - 32] : 556; }
+  return w * size / 1000;
+}
+function wrapText(s, size, bold, maxW) {
+  const out = [];
+  pdfClean(s).split('\n').forEach(par => {
+    let line = '';
+    par.split(/ +/).forEach(word => {
+      while (textW(word, size, bold) > maxW && word.length > 1) {      // very long word: hard break
+        let k = word.length; while (k > 1 && textW(word.slice(0, k), size, bold) > maxW) k--;
+        if (line) { out.push(line); line = ''; }
+        out.push(word.slice(0, k)); word = word.slice(k);
+      }
+      const t = line ? line + ' ' + word : word;
+      if (textW(t, size, bold) <= maxW) line = t; else { out.push(line); line = word; }
+    });
+    out.push(line);
+  });
+  return out;
+}
+class PdfDoc {
+  constructor() { this.pages = []; this.addPage(); }
+  addPage() { this.ops = []; this.pages.push(this.ops); }
+  static esc(s) {
+    let o = '';
+    for (const ch of pdfClean(s)) { let c = ch.charCodeAt(0); if (c > 255) c = 63; const t = String.fromCharCode(c); o += (t === '(' || t === ')' || t === '\\') ? '\\' + t : (c < 32 ? ' ' : t); }
+    return o;
+  }
+  static rgb(c) { return c.map(x => (x / 255).toFixed(3)).join(' '); }
+  text(x, y, s, o) {
+    o = o || {}; const size = o.size || 10, bold = !!o.bold;
+    if (o.align === 'right') x -= textW(s, size, bold); else if (o.align === 'center') x -= textW(s, size, bold) / 2;
+    this.ops.push(`BT /${bold ? 'F2' : 'F1'} ${size} Tf ${PdfDoc.rgb(o.color || [21, 24, 28])} rg ${x.toFixed(2)} ${y.toFixed(2)} Td (${PdfDoc.esc(s)}) Tj ET`);
+  }
+  rect(x, y, w, h, c) { this.ops.push(`${PdfDoc.rgb(c)} rg ${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f`); }
+  line(x1, y1, x2, y2, c, w) { this.ops.push(`${PdfDoc.rgb(c)} RG ${w || 0.6} w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`); }
+  logo(x, y, s, color) {
+    this.rect(x, y, s, s, color || [46, 107, 79]);
+    const k = s * 0.66, ox = x + (s - k) / 2, oy = y + (s - k) / 2;
+    this.ops.push(`q ${PdfDoc.rgb([239, 235, 227])} rg ${k.toFixed(3)} 0 0 ${k.toFixed(3)} ${ox.toFixed(3)} ${oy.toFixed(3)} cm ${LOGO_OPS} f Q`);
+  }
+  wordmark(x, y, h, color) {          // one-line URIBEST, h = cap height in points
+    this.ops.push(`q ${PdfDoc.rgb(color)} rg ${h.toFixed(3)} 0 0 ${h.toFixed(3)} ${x.toFixed(3)} ${y.toFixed(3)} cm ${URIBEST_OPS} f Q`);
+  }
+  bytes() {
+    const objs = [];
+    const add = s => { objs.push(s); return objs.length; };
+    add('<< /Type /Catalog /Pages 2 0 R >>');
+    add('PAGES');
+    const f1 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+    const f2 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+    const kids = [];
+    this.pages.forEach(ops => {
+      const body = ops.join('\n');
+      const c = add(`<< /Length ${body.length} >>\nstream\n${body}\nendstream`);
+      kids.push(add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> >> /Contents ${c} 0 R >>`));
+    });
+    objs[1] = `<< /Type /Pages /Kids [${kids.map(k => k + ' 0 R').join(' ')}] /Count ${kids.length} >>`;
+    let out = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n'; const offs = [];
+    objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+    const xref = out.length;
+    out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('');
+    out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+    const b = new Uint8Array(out.length);
+    for (let i = 0; i < out.length; i++) b[i] = out.charCodeAt(i) & 255;
+    return b;
+  }
+}
+
+function hexRgb(h, fb) {
+  const m = String(h || '').trim().match(/^#?([0-9a-f]{6})$/i);
+  if (!m) return fb;
+  const n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function buildPdf(d) {
+  const bk = d.business || 'uffg', isUB = bk === 'uribest';
+  const co = companyOf(bk), cust = customerById(d.customer) || { name: '' }, t = totals(d);
+  const GREEN = hexRgb(co.color, isUB ? [31, 79, 180] : [46, 107, 79]);
+  const P = new PdfDoc(), M = 48, R = 612 - M, INK = [21, 24, 28], MUT = [110, 116, 124], LINE = [222, 216, 205];
+  const TINT = isUB ? [234, 239, 249] : [239, 235, 227];
+  const title = { estimate: 'ESTIMATE', invoice: 'INVOICE', change: 'CHANGE ORDER' }[d.type];
+  let y = 792 - M;
+
+  // header: brand mark + company (left), title + numbers (right)
+  const info = [].concat(co.contact ? [co.contact] : [], (co.address || '').split('\n'),
+    [[co.phone, co.email].filter(Boolean).join('  -  ')], co.license ? ['Lic. ' + co.license] : []).filter(Boolean);
+  let ly;
+  if (isUB) {
+    P.wordmark(M, y - 24, 24, GREEN);                 // ~172pt wide
+    ly = y - 40;
+    P.text(M, ly, co.name || 'Uribest Carports & Repairs LLC', { size: 10.5, bold: true }); ly -= 12.5;
+    if (co.tagline) { P.text(M, ly, co.tagline.toUpperCase().split('').join(' '), { size: 7.5, bold: true, color: GREEN }); ly -= 12.5; }
+    info.forEach(s => { P.text(M, ly, s, { size: 9, color: MUT }); ly -= 11.5; });
+  } else {
+    P.logo(M, y - 58, 58, GREEN);
+    ly = y - 14;
+    P.text(M + 72, ly, co.name || 'UFFG Construction LLC', { size: 14, bold: true }); ly -= 14;
+    if (co.tagline) { P.text(M + 72, ly, co.tagline, { size: 9, color: GREEN }); ly -= 11.5; }
+    info.forEach(s => { P.text(M + 72, ly, s, { size: 9, color: MUT }); ly -= 11.5; });
+  }
+  P.text(R, y - 18, title, { size: 22, bold: true, color: GREEN, align: 'right' });
+  let ry = y - 38;
+  const meta = [[(d.type === 'change' ? 'Change order' : title.charAt(0) + title.slice(1).toLowerCase()) + ' #', d.number || 'DRAFT'], ['Date', fmtDate(d.date)]];
+  if (d.type === 'estimate' && d.due) meta.push(['Valid until', fmtDate(d.due)]);
+  if (d.type === 'invoice' && d.due) meta.push(['Due', fmtDate(d.due)]);
+  meta.forEach(([k, v]) => { P.text(R - 92, ry, k, { size: 9, color: MUT, align: 'right' }); P.text(R, ry, v, { size: 9, bold: true, align: 'right' }); ry -= 12.5; });
+  if (d.type === 'invoice' && d.status === 'Paid') { P.text(R, ry - 4, 'PAID', { size: 16, bold: true, color: GREEN, align: 'right' }); ry -= 20; }
+  y = Math.min(ly, ry, y - 66) - 16;
+  P.line(M, y, R, y, LINE, 0.8); y -= 18;
+
+  // customer + job
+  const colB = 330;
+  P.text(M, y, d.type === 'invoice' ? 'BILL TO' : 'PREPARED FOR', { size: 8, bold: true, color: GREEN });
+  P.text(colB, y, 'JOB', { size: 8, bold: true, color: GREEN });
+  let cy = y - 14, jy = y - 14;
+  [[cust.name, true], [cust.company], ...((cust.address || '').split('\n').map(s => [s])), [cust.phone], [cust.email]]
+    .filter(r => r[0]).forEach(([s, b]) => { wrapText(s, 10, !!b, colB - M - 16).forEach(w => { P.text(M, cy, w, { size: 10, bold: !!b }); cy -= 13; }); });
+  [[d.title, true], ...((d.site || cust.address || '').split('\n').map(s => [s]))]
+    .filter(r => r[0]).forEach(([s, b]) => { wrapText(s, 10, !!b, R - colB).forEach(w => { P.text(colB, jy, w, { size: 10, bold: !!b }); jy -= 13; }); });
+  y = Math.min(cy, jy) - 10;
+
+  const parent = d.type === 'change' ? docById(d.parent) : null;
+  if (parent) {
+    P.rect(M, y - 26, R - M, 26, TINT);
+    P.text(M + 10, y - 17, 'This change order modifies estimate ' + parent.number + (parent.title ? ' - ' + parent.title : '') + (parent.approvedAt ? ', approved ' + fmtDate(parent.approvedAt.slice(0, 10)) : '') + '.', { size: 9.5 });
+    y -= 40;
+  }
+
+  // table
+  const cQ = 392, cR = 470, cA = R - 8, descW = cQ - 50 - (M + 8);
+  const header = () => {
+    P.rect(M, y - 20, R - M, 20, GREEN);
+    const o = { size: 8.5, bold: true, color: [255, 255, 255] };
+    P.text(M + 8, y - 13.5, 'DESCRIPTION', o); P.text(cQ, y - 13.5, 'QTY', Object.assign({ align: 'right' }, o));
+    P.text(cR, y - 13.5, 'RATE', Object.assign({ align: 'right' }, o)); P.text(cA, y - 13.5, 'AMOUNT', Object.assign({ align: 'right' }, o));
+    y -= 28;
+  };
+  const room = need => { if (y - need < 70) { P.addPage(); y = 792 - M; header(); } };
+  header();
+  if (!d.lines.length) { P.text(M + 8, y - 4, 'No items', { size: 10, color: MUT }); y -= 18; }
+  d.lines.forEach(l => {
+    if (l.heading) {
+      room(30); y -= 4;
+      P.rect(M, y - 16, R - M, 18, TINT);
+      P.text(M + 8, y - 10.5, l.name, { size: 10, bold: true });
+      y -= 24; return;
+    }
+    const nameL = wrapText(l.name || '', 10, true, descW), descL = l.desc ? wrapText(l.desc, 9, false, descW) : [];
+    const h = nameL.length * 12.5 + descL.length * 11 + 8;
+    room(h);
+    let yy = y - 2;
+    nameL.forEach((s, i) => { P.text(M + 8, yy, s, { size: 10, bold: true }); yy -= 12.5; });
+    descL.forEach(s => { P.text(M + 8, yy, s, { size: 9, color: MUT }); yy -= 11; });
+    P.text(cQ, y - 2, fmtQty(l.qty) + (l.unit ? ' ' + l.unit : ''), { size: 10, align: 'right' });
+    P.text(cR, y - 2, money(l.rate), { size: 10, align: 'right' });
+    P.text(cA, y - 2, money(r2(l.qty * l.rate)), { size: 10, align: 'right' });
+    y -= h; P.line(M, y + 4, R, y + 4, LINE, 0.5); y -= 6;
+  });
+
+  // totals
+  const rows = [['Subtotal', money(t.subtotal)]];
+  if (t.discount) rows.push(['Discount', '-' + money(t.discount)]);
+  if (t.tax) rows.push(['Tax (' + d.taxRate + '%)', money(t.tax)]);
+  rows.push([d.type === 'change' ? 'This change order' : 'Total', money(t.total), 'bold']);
+  if (d.type === 'estimate' && Number(d.deposit)) rows.push(['Deposit due to start (' + d.deposit + '%)', money(r2(t.total * d.deposit / 100))]);
+  if (d.type === 'invoice') { rows.push(['Paid', '-' + money(d.paid || 0)]); rows.push(['Balance due', money(r2(t.total - (d.paid || 0))), 'big']); }
+  if (parent) {
+    const prev = changeOrdersOf(parent.id).filter(c => c.id !== d.id && c.status === 'Approved' && (!d.number || (c.number || '').localeCompare(d.number, undefined, { numeric: true }) < 0));
+    const orig = totals(parent).total, prevSum = r2(prev.reduce((s, c) => s + totals(c).total, 0));
+    rows.push(['Original estimate', money(orig)]);
+    if (prev.length) rows.push(['Previous change orders', money(prevSum)]);
+    rows.push(['New contract total', money(r2(orig + prevSum + t.total)), 'big']);
+  }
+  room(rows.length * 17 + 10);
+  y -= 6;
+  const tx = R - 230;
+  rows.forEach(r => {
+    if (r[2] === 'big') { P.rect(tx - 8, y - 6, R - tx + 8, 20, GREEN); P.text(tx, y, r[0], { size: 10.5, bold: true, color: [255, 255, 255] }); P.text(cA, y, r[1], { size: 10.5, bold: true, color: [255, 255, 255], align: 'right' }); y -= 24; return; }
+    P.text(tx, y, r[0], { size: 10, bold: r[2] === 'bold', color: r[2] ? INK : MUT });
+    P.text(cA, y, r[1], { size: 10, bold: r[2] === 'bold', align: 'right' });
+    if (r[2] === 'bold') P.line(tx - 8, y + 13, R, y + 13, LINE, 0.6);
+    y -= 17;
+  });
+
+  // notes, terms
+  [['NOTES', d.notes], ['TERMS', d.terms]].forEach(([h, s]) => {
+    if (!s) return;
+    const ls = wrapText(s, 9.5, false, R - M);
+    room(26 + ls.length * 12); y -= 12;
+    P.text(M, y, h, { size: 8, bold: true, color: GREEN }); y -= 14;
+    ls.forEach(x => { room(12); P.text(M, y, x, { size: 9.5 }); y -= 12; });
+  });
+
+  // signature
+  if (d.type !== 'invoice') {
+    room(70); y -= 34;
+    P.line(M, y, M + 250, y, INK, 0.7); P.line(M + 290, y, M + 420, y, INK, 0.7);
+    P.text(M, y - 12, 'Customer approval', { size: 8.5, color: MUT }); P.text(M + 290, y - 12, 'Date', { size: 8.5, color: MUT });
+    y -= 20;
+  }
+
+  // footers
+  const n = P.pages.length;
+  P.pages.forEach((ops, i) => {
+    P.ops = ops;
+    P.text(306, 30, [co.name || (isUB ? 'Uribest Carports & Repairs LLC' : 'UFFG Construction LLC'), d.number || 'Draft', n > 1 ? 'Page ' + (i + 1) + ' of ' + n : ''].filter(Boolean).join('   ·   ').replace(/·/g, '-'), { size: 8, color: MUT, align: 'center' });
+  });
+  return P.bytes();
+}
+
+function pdfName(d) {
+  const c = customerById(d.customer);
+  return (TYPE_LABEL[d.type] + ' ' + (d.number || 'draft') + (c ? ' - ' + c.name : '')).replace(/[\\/:*?"<>|]+/g, '') + '.pdf';
+}
+function pdfSheet() {
+  if (DIRTY || EDIT._new) saveEdit(true);
+  const d = EDIT;
+  let bytes;
+  try { bytes = buildPdf(d); } catch (e) { return toast('Could not make the PDF: ' + e.message, true); }
+  const name = pdfName(d);
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const file = new File([blob], name, { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  window.__lastPdf = { name, size: bytes.length };
+  const b = el('div');
+  b.innerHTML = `<p class="sub" style="margin:4px 0 12px">${esc(name)}${d.number ? '' : '<br>It will say DRAFT until it finishes saving and gets a number.'}</p>`;
+  const acts = el('div', 'actions');
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    acts.appendChild(btn('Share or save PDF', async () => {
+      try { await navigator.share({ files: [file], title: name }); } catch (e) { /* user cancelled */ }
+    }));
+  }
+  const open = el('a', 'btn ghost', 'Open PDF'); open.href = url; open.target = '_blank'; open.rel = 'noopener';
+  acts.appendChild(open);
+  const dl = el('a', 'btn ghost', 'Download'); dl.href = url; dl.download = name;
+  acts.appendChild(dl);
+  if (d.status === 'Draft' && d.type !== 'invoice') acts.appendChild(btn('Mark as sent', () => { closeSheet(); setStatus('Sent'); }, 'ghost'));
+  if (d.status === 'Draft' && d.type === 'invoice') acts.appendChild(btn('Mark as sent', () => { closeSheet(); setStatus('Sent'); }, 'ghost'));
+  b.appendChild(acts);
+  openSheet('PDF ready', b);
 }
 
 /* ===================== boot ===================== */
