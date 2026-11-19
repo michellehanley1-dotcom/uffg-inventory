@@ -4,7 +4,7 @@
  * Columns are always found by header NAME, never by position.
  */
 
-var VERSION   = '2.6.0';
+var VERSION   = '2.7.0';
 var SHEET_ID  = ''; // leave blank to use the sheet this script is bound to
 var CODE_TTL  = 10 * 60 * 1000;        // 6-digit code lifetime
 var CODE_TRIES= 5;
@@ -30,7 +30,7 @@ var TABS = {
   Payments:  ['ID','INVOICE','DATE','AMOUNT','METHOD','NOTE','WHO','DELETED','BANK'],
   Expenses:  ['ID','BUSINESS','STATUS','DATE','VENDOR','ACCOUNT','AMOUNT','METHOD','JOB','NOTE','RECEIPT',
               'RECEIPT LINK','HASH','DUP OF','SCANNED','CREATED BY','CREATED','UPDATED','DELETED',
-              'BANK','PAID BY','CHECK NO','CHECK FILE','CHECK LINK'],
+              'BANK','PAID BY','CHECK NO','CHECK FILE','CHECK LINK','SPLIT'],
   Company:   ['KEY','VALUE'],
   Banks:     ['ID','BUSINESS','NAME','TYPE','INSTITUTION','LAST4','OPENING BALANCE','OPENING DATE','ACTIVE','CREATED'],
   Vendors:   ['ID','BUSINESS','NAME','TYPE','PHONE','EMAIL','NOTES','ACTIVE','CREATED'],
@@ -1049,11 +1049,13 @@ function parseReceipt_(text) {
   return out;
 }
 
+function splitOf_(id) { if (!norm_(id)) return ''; var r = findBy_('Expenses', 'ID', id); return r ? norm_(r['SPLIT']) : ''; }
 /** Possible duplicates: the exact same photo, or same vendor + amount within 3 days. */
 function findDuplicates_(business, hash, vendor, amount, date, excludeId) {
-  var out = [], vk = vendorKey_(vendor), amt = r2_(amount), t = date ? new Date(date).getTime() : NaN;
+  var out = [], vk = vendorKey_(vendor), amt = r2_(amount), t = date ? new Date(date).getTime() : NaN, grp = splitOf_(excludeId);
   rows_('Expenses').forEach(function (x) {
     if (lower_(x['DELETED']) === 'yes' || norm_(x['ID']) === norm_(excludeId) || bizKey_(x['BUSINESS']) !== business) return;
+    if (grp && norm_(x['SPLIT']) === grp) return;
     var reason = '';
     if (hash && norm_(x['HASH']) === hash) reason = 'Same photo';
     else if (amt > 0 && Math.abs(num_(x['AMOUNT']) - amt) < 0.005) {
@@ -1085,7 +1087,7 @@ function expenseOut_(x) {
            hash: norm_(x['HASH']), dupOf: norm_(x['DUP OF']), scanned: !!norm_(x['SCANNED']),
            createdBy: norm_(x['CREATED BY']), created: norm_(x['CREATED']),
            file: !!norm_(x['RECEIPT']), bank: norm_(x['BANK']), paidBy: norm_(x['PAID BY']), checkNo: norm_(x['CHECK NO']),
-           checkFile: !!norm_(x['CHECK FILE']), checkLink: norm_(x['CHECK LINK']) };
+           checkFile: !!norm_(x['CHECK FILE']), checkLink: norm_(x['CHECK LINK']), split: norm_(x['SPLIT']) };
 }
 
 /** Save the photo to Drive right away and read it. With createDraft, also file it as an expense "To review". */
@@ -1194,6 +1196,55 @@ function authorizeDrive() {
   if (typeof Drive !== 'undefined') Logger.log('Receipt reading is on.');
   else Logger.log('Receipt reading is OFF: add the "Drive API" service (Services +) to turn it on.');
   DocumentApp.getActiveDocument;   // makes Google ask for Docs permission too (used to read scanned text)
+}
+
+/* ---- split one receipt across accounts / jobs: one row per part, same SPLIT group ---- */
+
+function saveSplit_(a, me) {
+  mustManage_(me);
+  var parts = (Array.isArray(a.parts) ? a.parts : []).slice(0, 30);
+  if (!parts.length) throw new Error('Add at least one part.');
+  var all = rows_('Expenses'), byId = {};
+  all.forEach(function (x) { byId[norm_(x['ID'])] = x; });
+  var first = byId[norm_(parts[0].id)];
+  if (!first || lower_(first['DELETED']) === 'yes') throw new Error('Save the expense first, then split it.');
+  var b = bizKey_(first['BUSINESS']);
+  var group = norm_(a.group) || norm_(first['SPLIT']) || Utilities.getUuid();
+  var sh = a.shared || {};
+  var bank = sh.bank !== undefined ? bankFor_(sh.bank, b) : norm_(first['BANK']);
+  var shared = {
+    'STATUS': 'Booked', 'DATE': norm_(sh.date) || dstr_(first['DATE']), 'VENDOR': norm_(sh.vendor !== undefined ? sh.vendor : first['VENDOR']).slice(0, 200),
+    'METHOD': norm_(sh.method !== undefined ? sh.method : first['METHOD']).slice(0, 50), 'BANK': bank,
+    'PAID BY': bank ? '' : norm_(sh.paidBy !== undefined ? sh.paidBy : first['PAID BY']).slice(0, 100),
+    'CHECK NO': norm_(sh.checkNo !== undefined ? sh.checkNo : first['CHECK NO']).replace(/^#/, '').slice(0, 20),
+    'SPLIT': parts.length > 1 ? group : '', 'DUP OF': 'CLEARED', 'UPDATED': now_().toISOString()
+  };
+  var keep = {}, ids = [];
+  parts.forEach(function (p, i) {
+    var amt = r2_(p.amount);
+    if (!amt) throw new Error('Part ' + (i + 1) + ' needs an amount.');
+    var acct = accountName_(p.account);
+    if (!acct) throw new Error('Pick an account for part ' + (i + 1) + '.');
+    var id = norm_(p.id) || Utilities.getUuid(), ex = byId[id];
+    if (ex && bizKey_(ex['BUSINESS']) !== b) throw new Error('That part belongs to the other business.');
+    var rec = {};
+    for (var k in shared) rec[k] = shared[k];
+    rec['AMOUNT'] = amt; rec['ACCOUNT'] = acct; rec['JOB'] = norm_(p.job); rec['NOTE'] = norm_(p.note).slice(0, 1000);
+    if (ex && lower_(ex['DELETED']) !== 'yes') writeRow_('Expenses', ex._row, rec);
+    else {
+      ['RECEIPT', 'RECEIPT LINK', 'CHECK FILE', 'CHECK LINK', 'SCANNED'].forEach(function (c) { rec[c] = norm_(first[c]); });
+      rec['ID'] = id; rec['BUSINESS'] = b; rec['HASH'] = ''; rec['CREATED BY'] = me.name; rec['CREATED'] = now_().toISOString(); rec['DELETED'] = '';
+      append_('Expenses', rec);
+    }
+    keep[id] = 1; ids.push(id);
+  });
+  // parts removed from the split
+  rows_('Expenses').forEach(function (x) {
+    if (norm_(x['SPLIT']) === group && !keep[norm_(x['ID'])] && lower_(x['DELETED']) !== 'yes')
+      writeRow_('Expenses', x._row, { 'DELETED': 'YES', 'UPDATED': now_().toISOString() });
+  });
+  log_(me.name, 'Split expense', 'Expense', shared['VENDOR'], '', '', String(parts.length) + ' parts', BUSINESSES[b].defaults.name);
+  return { ok: true, group: parts.length > 1 ? group : '', ids: ids };
 }
 
 /* ---- job budgets: what each category of a job should cost ---- */
@@ -1552,13 +1603,13 @@ function business_(allowed) {
 var PUBLIC = { requestCode: requestCode_, verifyCode: verifyCode_ };
 var BIZ_FNS = { saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1, saveDoc:1, setDocStatus:1,
                 deleteDoc:1, addPayment:1, deletePayment:1, saveExpense:1, deleteExpense:1, getReceipt:1, scanReceipt:1,
-                saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, scanCheck:1, importExpenses:1, saveBudget:1 };
+                saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, scanCheck:1, importExpenses:1, saveBudget:1, saveSplit:1 };
 var NEEDS_ID = { addTool:1, moveTool:1, setToolStatus:1, addPart:1, setLowTarget:1,
                  adjustStock:1, transferStock:1, addLocation:1, archiveLocation:1, bulkImport:1,
                  saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1,
                  saveDoc:1, setDocStatus:1, deleteDoc:1, addPayment:1, deletePayment:1,
                  saveExpense:1, deleteExpense:1,
-                 saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, importExpenses:1, saveBudget:1 };
+                 saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, importExpenses:1, saveBudget:1, saveSplit:1 };
 
 function handlers_() {
   return {
@@ -1575,7 +1626,7 @@ function handlers_() {
     addPayment: addPayment_, deletePayment: deletePayment_,
     saveExpense: saveExpense_, deleteExpense: deleteExpense_, getReceipt: getReceipt_, scanReceipt: scanReceipt_,
     saveBank: saveBank_, saveVendor: saveVendor_, archiveVendor: archiveVendor_, saveBankTx: saveBankTx_, deleteBankTx: deleteBankTx_,
-    setPaymentBank: setPaymentBank_, scanCheck: scanCheck_, importExpenses: importExpenses_, saveBudget: saveBudget_
+    setPaymentBank: setPaymentBank_, scanCheck: scanCheck_, importExpenses: importExpenses_, saveBudget: saveBudget_, saveSplit: saveSplit_
   };
 }
 
@@ -1603,6 +1654,7 @@ function bizOfCall_(fn, a) {
     case 'deletePayment': var p = findBy_('Payments', 'ID', a.id); return p ? rowBiz('Docs', norm_(p['INVOICE'])) : '';
     case 'saveExpense': return rowBiz('Expenses', a.id) || bizKey_(a.business);
     case 'deleteExpense': case 'getReceipt': return rowBiz('Expenses', a.id);
+    case 'saveSplit': return rowBiz('Expenses', ((a.parts || [])[0] || {}).id) || bizKey_(a.business);
   }
   return '';
 }
