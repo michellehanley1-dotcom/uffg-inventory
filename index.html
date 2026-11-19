@@ -235,6 +235,16 @@ body[data-biz=uribest] .matchbox{background:#E9EEF7;border-color:#C9D5EE}
 label.check{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.88rem;color:var(--ink);margin:-4px 0 12px;font-weight:500}
 label.check input{width:auto;margin:0}
 .link.dep{padding:2px 0 0;font-size:.8rem}
+.receipt.big img{max-height:46vh}
+.rimg{position:relative}
+.zoombtn{position:absolute;right:8px;bottom:16px;background:rgba(21,24,28,.72);color:#fff;border:0;border-radius:16px;padding:6px 11px;font-size:.78rem;font-weight:600;cursor:pointer}
+.viewer{position:fixed;inset:0;z-index:200;background:#0d0f12;display:flex;flex-direction:column;color:#fff}
+.vbar{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px}
+.vbar span{flex:1;font-weight:600;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vbar button{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:18px;padding:8px 14px;font-size:.88rem;font-weight:600;cursor:pointer}
+.vstage{flex:1;position:relative;overflow:hidden;touch-action:none}
+#vImg{position:absolute;left:50%;top:50%;max-width:100%;max-height:100%;transform-origin:center center;user-select:none;-webkit-user-drag:none;will-change:transform}
+.vhint{text-align:center;font-size:.74rem;opacity:.6;padding:6px 0 calc(env(safe-area-inset-bottom) + 8px)}
 /* v2.6: budgets */
 .bbar{height:7px;background:var(--cream);border-radius:4px;overflow:hidden;margin:6px 0 2px}
 .bbar i{display:block;height:100%;background:var(--green);border-radius:4px}
@@ -321,6 +331,11 @@ label.check input{width:auto;margin:0}
 </section>
 
 <div class="scrim" id="scrim"></div>
+<div class="viewer hide" id="viewer" role="dialog" aria-label="Photo">
+  <div class="vbar"><span id="vTitle"></span><button type="button" id="vRot" aria-label="Rotate">↻</button><button type="button" id="vFit">Fit</button><button type="button" id="vClose">Done</button></div>
+  <div class="vstage" id="vStage"><img id="vImg" alt=""></div>
+  <div class="vhint">Pinch or double-tap to zoom · drag to move</div>
+</div>
 <div class="sheet" id="sheet"><div class="handle"></div><div id="sheetBody"></div></div>
 
 <script src="config.js"></script>
@@ -1987,6 +2002,7 @@ function expenseSheet(x, presetJob, opts) {
   if (x.bank === undefined) x.bank = '';
   const reviewing = x.status === 'Review';
   let pending = null, removeReceipt = false, scanned = null, preview = null, status = '', busy = false, hash = '', notDup = false, serverDups = [];
+  let autoTried = false, loadingRc = false;
   const touched = {};
   const vendors = [...new Set(expenses().map(e => e.vendor).filter(Boolean))].slice(0, 80);
   const jobs = jobOptions();
@@ -1994,7 +2010,9 @@ function expenseSheet(x, presetJob, opts) {
   const acctOpts = sel => ['cogs', 'expense'].map(t => `<optgroup label="${t === 'cogs' ? 'Job costs (cost of goods sold)' : 'Overhead (operating expenses)'}">` +
     accounts().filter(a => a.type === t).map(a => `<option value="${esc(a.name)}" ${a.name === sel ? 'selected' : ''}>${esc(a.code + ' · ' + a.name)}</option>`).join('') + '</optgroup>').join('');
   const b = el('div');
-  b.innerHTML =
+  const rcHtml = `<label>Receipt</label><div class="receipt${reviewing ? ' big' : ''}" id="xrc"></div>
+     <input id="xfile" type="file" accept="image/*" class="hide">`;
+  b.innerHTML = (reviewing ? rcHtml : '') +
     `<div id="xdup"></div>` +
     `<div class="grid2">` + field('Amount $', `<input id="xam" class="money" type="number" inputmode="decimal" step="0.01" value="${x.amount || ''}" placeholder="0.00">`) +
     field('Date', `<input id="xdt" type="date" value="${esc(x.date)}">`) + `</div>` +
@@ -2006,10 +2024,14 @@ function expenseSheet(x, presetJob, opts) {
     `<div class="grid2">` + field('Paid from', `<select id="xbk">${bankOptions(x.bank, 'Own money (out of pocket)')}</select>`) +
     `<div id="xpbw">` + field('Whose money', `<input id="xpb" list="xpl" value="${esc(x.paidBy || '')}" placeholder="Ricardo Uribe"><datalist id="xpl">${peopleNames().map(n => `<option value="${esc(n)}">`).join('')}</datalist>`) + `</div>` +
     `<div id="xckw">` + field('Check #', `<input id="xck" inputmode="numeric" value="${esc(x.checkNo || '')}">`) + `</div></div>` +
-    `<label>Receipt</label><div class="receipt" id="xrc"></div>
-     <input id="xfile" type="file" accept="image/*" class="hide">`;
+    (reviewing ? '' : rcHtml);
   const acts = el('div', 'actions');
-  acts.appendChild(btn(reviewing ? 'Book expense' : (isNew ? 'Save expense' : 'Save'), () => {
+  const nextDraft = () => expenses().filter(e => e.status === 'Review' && e.id !== x.id).sort((a, c) => (c.created || '').localeCompare(a.created || ''))[0];
+  const more = reviewing && nextDraft();
+  if (more) acts.appendChild(btn('Book & review next →', () => save(true)));
+  acts.appendChild(btn(reviewing ? 'Book expense' : (isNew ? 'Save expense' : 'Save'), () => save(false), more ? 'ghost' : ''));
+  if (more) acts.appendChild(btn('Skip — review the next one', () => { closeSheet(); setTimeout(() => expenseSheet(nextDraft()), 250); }, 'ghost'));
+  function save(next) {
     if (busy) return toast('Still reading the receipt — one sec.', true);
     x.amount = r2($('#xam').value);
     if (!x.amount) return toast('Enter the amount. Use a minus for a return or refund.', true);
@@ -2033,7 +2055,8 @@ function expenseSheet(x, presetJob, opts) {
     if (notDup) payload.notDuplicate = true;
     enqueue('saveExpense', payload, 'Expense ' + money(x.amount));
     closeSheet(); toast(reviewing ? 'Booked to ' + acctOf(x.account).name : 'Expense saved'); render();
-  }));
+    if (next) { const nx = nextDraft(); if (nx) setTimeout(() => expenseSheet(nx), 280); }
+  }
   if (!isNew) acts.appendChild(btn(reviewing ? 'Delete — not a business expense' : 'Delete expense', () => confirmSheet('Delete this expense?', (x.amount ? money(x.amount) : 'This receipt') + (x.vendor ? ' at ' + x.vendor : '') + '. The photo stays in Drive.', 'Delete', () => {
     biz().expenses = expensesAll().filter(e => e.id !== x.id); saveLocal();
     enqueue('deleteExpense', { id: x.id }, 'Expense'); render();
@@ -2079,17 +2102,17 @@ function expenseSheet(x, presetJob, opts) {
     if (status) rc.appendChild(el('div', 'scanstat' + (busy ? ' busy' : ''), status));
     const shown = preview || (!removeReceipt && RECEIPTS[x.id]);
     if (shown) {
-      const im = el('img'); im.src = shown; im.alt = 'Receipt'; im.onclick = () => window.open(shown, '_blank');
-      rc.appendChild(im);
+      const im = el('img'); im.src = shown; im.alt = 'Receipt'; im.onclick = () => openViewer(shown, x.vendor || 'Receipt');
+      const wrap = el('div', 'rimg'); wrap.appendChild(im);
+      const z = el('button', 'zoombtn', '🔍 Zoom'); z.type = 'button'; z.onclick = () => openViewer(shown, x.vendor || 'Receipt');
+      wrap.appendChild(z); rc.appendChild(wrap);
+    } else if (x.file && !removeReceipt && !autoTried && navigator.onLine) {
+      autoTried = true; loadReceipt();                       // show the photo right away, no extra tap
     }
     const row = el('div', 'grid2');
     if (shown || (x.receipt && !removeReceipt)) {
       if (!shown && !x.file && x.link) row.appendChild(btn('Open receipt in Drive', () => window.open(x.link, '_blank'), 'ghost'));
-      else if (!shown) row.appendChild(btn('View receipt', async (e) => {
-        const t = e.target; t.disabled = true; t.textContent = 'Loading…';
-        try { const r = await call('getReceipt', { id: x.id }); RECEIPTS[x.id] = 'data:' + r.type + ';base64,' + r.data; paintReceipt(); }
-        catch (err) { toast(navigator.onLine ? err.message : 'Receipts open when you have signal.', true); t.disabled = false; t.textContent = 'View receipt'; }
-      }, 'ghost'));
+      else if (!shown) row.appendChild(btn(loadingRc ? 'Loading receipt…' : 'View receipt', () => loadReceipt(), 'ghost'));
       row.appendChild(btn('Replace photo', () => fileIn.click(), 'ghost'));
       row.appendChild(btn('Remove', () => { pending = null; scanned = null; preview = null; status = ''; removeReceipt = true; paintReceipt(); }, 'ghost dangertext'));
     } else {
@@ -2099,15 +2122,23 @@ function expenseSheet(x, presetJob, opts) {
     rc.appendChild(row);
     if (x.checkFile || x.checkLink) {
       const cb = btn('View check photo', async (e) => {
-        if (RECEIPTS['chk:' + x.id]) return window.open(RECEIPTS['chk:' + x.id], '_blank');
+        if (RECEIPTS['chk:' + x.id]) return openViewer(RECEIPTS['chk:' + x.id], 'Check' + (x.checkNo ? ' #' + x.checkNo : ''));
         if (!x.checkFile && x.checkLink) return window.open(x.checkLink, '_blank');
         const t = e.target; t.disabled = true; t.textContent = 'Loading…';
-        try { const r = await call('getReceipt', { id: x.id, which: 'check' }); RECEIPTS['chk:' + x.id] = 'data:' + r.type + ';base64,' + r.data; window.open(RECEIPTS['chk:' + x.id], '_blank'); }
+        try { const r = await call('getReceipt', { id: x.id, which: 'check' }); RECEIPTS['chk:' + x.id] = 'data:' + r.type + ';base64,' + r.data; openViewer(RECEIPTS['chk:' + x.id], 'Check' + (x.checkNo ? ' #' + x.checkNo : '')); }
         catch (err) { if (x.checkLink) window.open(x.checkLink, '_blank'); else toast(err.message, true); }
         t.disabled = false; t.textContent = 'View check photo';
       }, 'ghost');
       cb.classList.add('wide'); cb.style.marginTop = '8px'; rc.appendChild(cb);
     }
+  }
+  async function loadReceipt() {
+    if (loadingRc) return;
+    if (!navigator.onLine) return toast('Receipts open when you have signal.', true);
+    loadingRc = true; paintReceipt();
+    try { const r = await call('getReceipt', { id: x.id }); RECEIPTS[x.id] = 'data:' + r.type + ';base64,' + r.data; }
+    catch (err) { toast(err.message, true); }
+    loadingRc = false; if ($('#xrc') === rc) paintReceipt();
   }
   fileIn.onchange = async () => {
     const f = fileIn.files && fileIn.files[0]; fileIn.value = ''; if (!f) return;
@@ -2802,7 +2833,7 @@ function checkSheet(opts) {
   function paintPhoto() {
     rc.innerHTML = '';
     if (status) rc.appendChild(el('div', 'scanstat' + (busy ? ' busy' : ''), status));
-    if (preview) { const im = el('img'); im.src = preview; im.alt = 'Check'; rc.appendChild(im); }
+    if (preview) { const im = el('img'); im.src = preview; im.alt = 'Check'; im.onclick = () => openViewer(preview, 'Check'); rc.appendChild(im); }
     const b = btn(preview ? 'Retake photo' : '📷  Take or choose a photo of the check', () => fileIn.click(), 'ghost'); b.classList.add('wide');
     rc.appendChild(b);
   }
@@ -3353,6 +3384,62 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { pa
   if (DATA) render();
   await refresh();
   if (!DATA) showAuth();
+})();
+
+/* ---- full-screen photo viewer: pinch, double-tap, drag, rotate ---- */
+const VW = { s: 1, x: 0, y: 0, r: 0, pts: new Map(), start: null, lastTap: 0 };
+function vApply() { $('#vImg').style.transform = `translate(-50%,-50%) translate(${VW.x}px,${VW.y}px) rotate(${VW.r}deg) scale(${VW.s})`; }
+function vReset() { VW.s = 1; VW.x = 0; VW.y = 0; vApply(); }
+function openViewer(src, title) {
+  $('#vImg').src = src; $('#vTitle').textContent = title || '';
+  VW.r = 0; vReset(); $('#viewer').classList.remove('hide');
+}
+function closeViewer() { $('#viewer').classList.add('hide'); $('#vImg').removeAttribute('src'); }
+window.openViewer = openViewer;
+(function viewerGestures() {
+  const st = $('#vStage');
+  const zoomAt = (ns, cx, cy) => {               // keep the point under the finger in place
+    ns = Math.min(8, Math.max(1, ns));
+    const r = st.getBoundingClientRect(), px = cx - r.left - r.width / 2, py = cy - r.top - r.height / 2;
+    VW.x = px - (px - VW.x) * ns / VW.s; VW.y = py - (py - VW.y) * ns / VW.s; VW.s = ns;
+    if (VW.s === 1) { VW.x = 0; VW.y = 0; }
+    vApply();
+  };
+  st.addEventListener('pointerdown', e => {
+    st.setPointerCapture(e.pointerId); VW.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (VW.pts.size === 1) {
+      const now = Date.now();
+      if (now - VW.lastTap < 300) { zoomAt(VW.s > 1.2 ? 1 : 2.6, e.clientX, e.clientY); VW.lastTap = 0; }
+      else VW.lastTap = now;
+    }
+    const p = [...VW.pts.values()];
+    VW.start = { s: VW.s, x: VW.x, y: VW.y, p: p.map(q => ({ ...q })),
+      d: p.length > 1 ? Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) : 0 };
+  });
+  st.addEventListener('pointermove', e => {
+    if (!VW.pts.has(e.pointerId) || !VW.start) return;
+    VW.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const p = [...VW.pts.values()], s0 = VW.start;
+    if (p.length > 1 && s0.d) {
+      const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y), mx = (p[0].x + p[1].x) / 2, my = (p[0].y + p[1].y) / 2;
+      const m0x = (s0.p[0].x + s0.p[1].x) / 2, m0y = (s0.p[0].y + s0.p[1].y) / 2;
+      VW.s = s0.s; VW.x = s0.x + (mx - m0x); VW.y = s0.y + (my - m0y);
+      zoomAt(s0.s * d / s0.d, mx, my);
+    } else if (p.length === 1 && VW.s > 1) {
+      VW.x = s0.x + (p[0].x - s0.p[0].x); VW.y = s0.y + (p[0].y - s0.p[0].y); vApply();
+    }
+  });
+  const up = e => {
+    VW.pts.delete(e.pointerId);
+    const p = [...VW.pts.values()];
+    VW.start = p.length ? { s: VW.s, x: VW.x, y: VW.y, p: p.map(q => ({ ...q })), d: 0 } : null;
+  };
+  st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up);
+  st.addEventListener('wheel', e => { e.preventDefault(); zoomAt(VW.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); }, { passive: false });
+  document.addEventListener('gesturestart', e => { if (!$('#viewer').classList.contains('hide')) e.preventDefault(); });
+  $('#vClose').onclick = closeViewer;
+  $('#vFit').onclick = vReset;
+  $('#vRot').onclick = () => { VW.r = (VW.r + 90) % 360; vApply(); };
 })();
 
 /* Installed app on iPhone: if the page is shorter than the screen, measure the strip so bottom bars sit on the edge. */
