@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#2E6B4F">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="UFFG Tools">
-<title>UFFG Inventory</title>
+<meta name="apple-mobile-web-app-title" content="UFFG">
+<title>UFFG</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
@@ -223,6 +223,18 @@ input.money{font-size:1.25rem;font-weight:700}
 .pct{font-weight:500;opacity:.8;font-size:.85em;margin-left:4px}
 .negtext{color:var(--red)}
 .card.acting{border-color:var(--green);box-shadow:0 0 0 2px rgba(46,107,79,.15)}
+/* v2.5: banks, checks */
+.amt.pos{color:var(--green)}
+.warntext{color:#9A5B12}
+.matchbox{background:#EEF3EF;border:1px solid #CFE0D5;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:.88rem}
+body[data-biz=uribest] .matchbox{background:#E9EEF7;border-color:#C9D5EE}
+.matchbox>b{display:block;margin-bottom:6px}
+.mrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(0,0,0,.06);cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:.88rem;margin:0}
+.mrow input{width:auto;margin:0}
+.mrow .meta{display:inline}
+label.check{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.88rem;color:var(--ink);margin:-4px 0 12px;font-weight:500}
+label.check input{width:auto;margin:0}
+.link.dep{padding:2px 0 0;font-size:.8rem}
 </style>
 </head>
 <body>
@@ -232,7 +244,7 @@ input.money{font-size:1.25rem;font-weight:700}
 
 <!-- ============================ SIGN IN ============================ -->
 <section id="auth" class="hide">
-  <div class="top"><img src="icons/icon-192.png" alt=""><h1>UFFG INVENTORY</h1></div>
+  <div class="top"><img src="icons/icon-192.png" alt=""><h1>UFFG</h1></div>
   <main>
     <div id="authErr" class="err hide"></div>
     <div id="step1">
@@ -569,9 +581,11 @@ function render() {
   const views = {
     customers: vCustomers, estimates: v => vDocList(v, 'estimate'), invoices: v => vDocList(v, 'invoice'), expenses: vExpenses,
     inventory: vInventory, more: vMore,
-    customer: vCustomer, doc: vDoc, services: vServices, company: vCompany, pnl: vPnl
+    customer: vCustomer, doc: vDoc, services: vServices, company: vCompany, pnl: vPnl,
+    banks: vBanks, bank: vBank, vendors: vVendors, balance: vBalance
   };
-  const titles = { customer: 'Customer', services: 'Services & pricing', company: 'Company info', pnl: 'Profit & loss' };
+  const titles = { customer: 'Customer', services: 'Services & pricing', company: 'Company info', pnl: 'Profit & loss',
+    banks: 'Bank & cards', bank: (bankById(r.id) || {}).name || 'Account', vendors: 'Vendors & subs', balance: 'Balance sheet' };
   $('#viewTitle').textContent = (r.view === 'doc' ? docLabel(EDIT) : (titles[r.view] || TAB_LABEL[r.view] || r.view)).toUpperCase();
   (views[r.view] || vInventory)(wrap, r.id);
 }
@@ -891,6 +905,9 @@ function vMore(v) {
   if (isMgr()) {
     v.appendChild(el('h2', null, BIZ_NAMES[BIZ] + ' business'));
     [['Profit & loss', 'Income, job costs, overhead, profit by project', 'pnl'],
+     ['Balance sheet', 'Cash, what customers owe, what the business owes', 'balance'],
+     ['Bank & cards', banksOf().length ? banksOf().map(bankLabel).join(' · ') : 'Checks, deposits, running balance', 'banks'],
+     ['Vendors & subcontractors', 'Who you pay, and how much this year', 'vendors'],
      ['Company info', (companyOf(BIZ).name || BIZ_NAMES[BIZ]) + ' · printed on PDFs', 'company'],
      ['Services & pricing', (svcs().length || 'No') + ' saved services', 'services']].forEach(([t, m, view]) => {
       const c = el('div', 'card tap');
@@ -1394,8 +1411,14 @@ function vDoc(v, id) {
     if (!pays.length) pc.appendChild(el('div', 'meta', 'No payments recorded.'));
     pays.forEach(p => {
       const r = el('div', 'row line');
-      r.innerHTML = `<div class="grow"><div class="ttl">${money(p.amount)}</div><div class="meta">${esc([fmtDate(p.date), p.method, p.note].filter(Boolean).join(' · '))}</div></div><button class="link">Remove</button>`;
-      r.querySelector('button').onclick = () => confirmSheet('Remove payment?', money(p.amount) + ' on ' + fmtDate(p.date), 'Remove', () => {
+      r.innerHTML = `<div class="grow"><div class="ttl">${money(p.amount)}</div><div class="meta">${esc([fmtDate(p.date), p.method, p.note].filter(Boolean).join(' · '))}</div>
+        ${banksOf().length ? `<button class="link dep">${esc(p.bank ? 'Deposited to ' + bankLabel(bankById(p.bank)) : 'Not deposited yet')} ›</button>` : ''}</div><button class="link rm">Remove</button>`;
+      if (r.querySelector('.dep')) r.querySelector('.dep').onclick = () => {
+        const f = el('div'); f.innerHTML = field('Deposited to', `<select id="pdb">${bankOptions(p.bank, 'Not deposited yet / cash on hand')}</select>`);
+        f.appendChild(btn('Save', () => { p.bank = $('#pdb').value; saveLocal(); enqueue('setPaymentBank', { id: p.id, bank: p.bank }, 'Deposit'); closeSheet(); render(); }));
+        openSheet('Payment ' + money(p.amount), f);
+      };
+      r.querySelector('.rm').onclick = () => confirmSheet('Remove payment?', money(p.amount) + ' on ' + fmtDate(p.date), 'Remove', () => {
         DATA.biz.payments = biz().payments.filter(x => x.id !== p.id);
         localPaid(d.id); saveLocal();
         enqueue('deletePayment', { id: p.id }, 'Payment'); render();
@@ -1569,9 +1592,10 @@ function paymentSheet() {
   b.innerHTML = `<div class="grid2">` + field('Amount $', `<input id="pam" type="number" inputmode="decimal" step="0.01" value="${bal > 0 ? bal : ''}">`) +
     field('Date', `<input id="pdt" type="date" value="${today()}">`) + `</div>` +
     field('Method', `<select id="pme">${['Zelle', 'Check', 'Cash', 'Card', 'Bank transfer', 'Other'].map(m => `<option>${m}</option>`).join('')}</select>`) +
-    field('Note', `<input id="pno" placeholder="Check #, reference…">`);
+    field('Note', `<input id="pno" placeholder="Check #, reference…">`) +
+    (banksOf().length ? field('Deposited to', `<select id="pbk">${bankOptions(defaultBank(), 'Not deposited yet / cash on hand')}</select>`) : '');
   b.appendChild(btn('Save payment', () => {
-    const p = { id: uid(), invoice: EDIT.id, amount: r2($('#pam').value), date: $('#pdt').value || today(), method: $('#pme').value, note: $('#pno').value.trim() };
+    const p = { id: uid(), invoice: EDIT.id, amount: r2($('#pam').value), date: $('#pdt').value || today(), method: $('#pme').value, note: $('#pno').value.trim(), bank: $('#pbk') ? $('#pbk').value : '' };
     if (p.amount <= 0) return toast('Enter the amount paid.', true);
     biz().payments.push(p); localPaid(EDIT.id); saveLocal();
     enqueue('addPayment', p, 'Payment');
@@ -1676,6 +1700,7 @@ function actionsSheet() {
 const DEFAULT_ACCOUNTS = [
   ['5000', 'Job materials', 'cogs'], ['5100', 'Subcontractors', 'cogs'], ['5200', 'Job labor', 'cogs'],
   ['5300', 'Equipment rental', 'cogs'], ['5400', 'Permits & inspections', 'cogs'], ['5500', 'Dump & disposal', 'cogs'],
+  ['5600', 'Job travel & lodging', 'cogs'], ['5700', 'Job supplies & small tools', 'cogs'],
   ['6000', 'Fuel', 'expense'], ['6100', 'Vehicle repairs & maintenance', 'expense'], ['6200', 'Tools & small equipment', 'expense'],
   ['6300', 'Insurance', 'expense'], ['6400', 'Licenses & registrations', 'expense'], ['6500', 'Office, software & phone', 'expense'],
   ['6600', 'Meals', 'expense'], ['6700', 'Advertising & marketing', 'expense'], ['6800', 'Legal & accounting', 'expense'],
@@ -1764,9 +1789,10 @@ function vExpenses(v) {
   v.appendChild(s);
   s.querySelector('#pnlTile').onclick = () => go('pnl');
 
-  const g = el('div', 'grid3'); g.style.marginBottom = '10px';
-  g.appendChild(btn('📷 Scan', () => expenseSheet(null, '', { scan: true })));
-  g.appendChild(btn('⬆ Upload', () => bulkPick(), 'ghost'));
+  const g = el('div', 'grid2'); g.style.marginBottom = '10px';
+  g.appendChild(btn('📷 Scan receipt', () => expenseSheet(null, '', { scan: true })));
+  g.appendChild(btn('✍ Check', () => checkSheet({})));
+  g.appendChild(btn('⬆ Upload photos', () => bulkPick(), 'ghost'));
   g.appendChild(btn('+ By hand', () => expenseSheet(null), 'ghost'));
   v.appendChild(g);
 
@@ -1828,9 +1854,9 @@ function vExpenses(v) {
 function expenseCard(x) {
   const flags = (x.status === 'Review' ? '<span class="pill warn">Review</span>' : '') + (x.dupOf ? '<span class="pill bad">Possible duplicate</span>' : '');
   return card(`<div class="row"><div class="grow"><div class="ttl">${esc(x.vendor || 'Unknown vendor')}${x.receipt ? ' <span class="clip" title="Receipt saved">📎</span>' : ''}</div>
-    <div class="meta">${esc([x.account ? acctLabel(x.account) : 'No account', jobLabel(x.job), x.method].filter(Boolean).join(' · '))}</div>
+    <div class="meta">${esc([x.account ? acctLabel(x.account) : 'No account', jobLabel(x.job), x.checkNo ? 'Check #' + x.checkNo : x.method, !x.bank && x.paidBy ? 'paid by ' + x.paidBy : ''].filter(Boolean).join(' · '))}</div>
     ${x.status === 'Review' ? `<div class="meta">${esc(fmtDate(x.date))}</div>` : ''}
-    ${x.note ? `<div class="meta clamp">${esc(x.note)}</div>` : ''}</div><div class="rcol"><div class="amt">${x.amount ? money(x.amount) : '—'}</div>${flags}</div></div>`, () => expenseSheet(x));
+    ${x.note ? `<div class="meta clamp">${esc(x.note)}</div>` : ''}</div><div class="rcol"><div class="amt ${x.amount < 0 ? 'pos' : ''}">${x.amount ? money(x.amount) : '—'}</div>${flags}</div></div>`, () => expenseSheet(x));
 }
 
 function shrinkImage(file, max, q) {
@@ -1897,7 +1923,9 @@ async function bulkUpload(files) {
 function expenseSheet(x, presetJob, opts) {
   opts = opts || {};
   const isNew = !x;
-  x = x ? clone(x) : { id: uid(), business: BIZ, status: 'Booked', date: today(), vendor: '', account: '', amount: 0, method: 'Card', job: presetJob || '', note: '', receipt: false };
+  x = x ? clone(x) : { id: uid(), business: BIZ, status: 'Booked', date: today(), vendor: '', account: '', amount: 0, method: 'Card', job: presetJob || '', note: '', receipt: false,
+                       bank: opts.bank || '', paidBy: opts.bank ? '' : acting().name, checkNo: '' };
+  if (x.bank === undefined) x.bank = '';
   const reviewing = x.status === 'Review';
   let pending = null, removeReceipt = false, scanned = null, preview = null, status = '', busy = false, hash = '', notDup = false, serverDups = [];
   const touched = {};
@@ -1916,26 +1944,30 @@ function expenseSheet(x, presetJob, opts) {
     field('Project (for job costing)', `<select id="xjb"><option value="">No project — general overhead</option>${jobs.map(j => `<option value="${esc(j.id)}" ${j.id === x.job ? 'selected' : ''}>${esc(jobLabel(j.id) + ' — ' + custName(j.customer))}</option>`).join('')}</select>`) +
     `<div class="grid2">` + field('Paid with', `<select id="xmt">${PAY_METHODS.map(m => `<option ${m === x.method ? 'selected' : ''}>${m}</option>`).join('')}</select>`) +
     field('Note', `<input id="xnt" value="${esc(x.note)}" placeholder="What it was for">`) + `</div>` +
+    `<div class="grid2">` + field('Paid from', `<select id="xbk">${bankOptions(x.bank, 'Own money (out of pocket)')}</select>`) +
+    `<div id="xpbw">` + field('Whose money', `<input id="xpb" list="xpl" value="${esc(x.paidBy || '')}" placeholder="Ricardo Uribe"><datalist id="xpl">${peopleNames().map(n => `<option value="${esc(n)}">`).join('')}</datalist>`) + `</div>` +
+    `<div id="xckw">` + field('Check #', `<input id="xck" inputmode="numeric" value="${esc(x.checkNo || '')}">`) + `</div></div>` +
     `<label>Receipt</label><div class="receipt" id="xrc"></div>
      <input id="xfile" type="file" accept="image/*" class="hide">`;
   const acts = el('div', 'actions');
   acts.appendChild(btn(reviewing ? 'Book expense' : (isNew ? 'Save expense' : 'Save'), () => {
     if (busy) return toast('Still reading the receipt — one sec.', true);
     x.amount = r2($('#xam').value);
-    if (x.amount <= 0) return toast('Enter the amount.', true);
+    if (!x.amount) return toast('Enter the amount. Use a minus for a return or refund.', true);
     x.account = $('#xac').value;
     if (!x.account) return toast('Pick the account to book it to.', true);
     x.date = $('#xdt').value || today(); x.vendor = $('#xvn').value.trim();
     x.method = $('#xmt').value; x.job = $('#xjb').value; x.note = $('#xnt').value.trim();
+    x.bank = $('#xbk').value; x.paidBy = x.bank ? '' : $('#xpb').value.trim(); x.checkNo = x.method === 'Check' ? $('#xck').value.trim().replace(/^#/, '') : (x.checkNo || '');
     x.status = 'Booked';
-    if (pending || scanned) { x.receipt = true; RECEIPTS[x.id] = preview; removeReceipt = false; }
+    if (pending || scanned) { x.receipt = true; x.file = true; RECEIPTS[x.id] = preview; removeReceipt = false; }
     if (removeReceipt) { x.receipt = false; delete RECEIPTS[x.id]; }
     const dupsNow = notDup ? [] : localDuplicates(x, hash);
     x.dupOf = dupsNow.length ? dupsNow[0].e.id : '';
     if (hash) x.hash = hash;
     if (!biz().expenses) biz().expenses = [];
     upsertLocal(biz().expenses, Object.assign({ created: new Date().toISOString() }, x)); saveLocal();
-    const payload = Object.assign({}, x); delete payload.receipt; delete payload.dupOf; delete payload.link;
+    const payload = Object.assign({}, x); ['receipt', 'dupOf', 'link', 'file', 'checkFile', 'checkLink', 'created', 'createdBy', 'scanned'].forEach(k => delete payload[k]);
     if (scanned) { payload.receiptFile = scanned.fileId; payload.scanText = scanned.text; }
     else if (pending) payload.receipt = { data: pending.data, type: pending.type };
     if (removeReceipt) payload.removeReceipt = true;
@@ -1976,7 +2008,11 @@ function expenseSheet(x, presetJob, opts) {
     $('#dupOpen').onclick = () => { const o = expensesAll().find(e => e.id === d.id); if (o) expenseSheet(o); };
   }
   b.addEventListener('input', e => { if (e.target.id) touched[e.target.id] = true; if (e.target.id === 'xvn') suggest(); if (['xvn', 'xam', 'xdt'].includes(e.target.id)) paintDup(); });
-  b.addEventListener('change', e => { if (e.target.id) touched[e.target.id] = true; if (e.target.id === 'xac') hint.textContent = ''; });
+  b.addEventListener('change', e => { if (e.target.id) touched[e.target.id] = true; if (e.target.id === 'xac') hint.textContent = '';
+    if (e.target.id === 'xmt' && $('#xmt').value === 'Check' && !$('#xbk').value && !touched.xbk) $('#xbk').value = defaultBank();
+    if (['xmt', 'xbk'].includes(e.target.id)) paintPaid(); });
+  function paintPaid() { $('#xpbw').classList.toggle('hide', !!$('#xbk').value); $('#xckw').classList.toggle('hide', $('#xmt').value !== 'Check'); }
+  paintPaid();
 
   const rc = $('#xrc'), fileIn = $('#xfile');
   function paintReceipt() {
@@ -1989,7 +2025,8 @@ function expenseSheet(x, presetJob, opts) {
     }
     const row = el('div', 'grid2');
     if (shown || (x.receipt && !removeReceipt)) {
-      if (!shown) row.appendChild(btn('View receipt', async (e) => {
+      if (!shown && !x.file && x.link) row.appendChild(btn('Open receipt in Drive', () => window.open(x.link, '_blank'), 'ghost'));
+      else if (!shown) row.appendChild(btn('View receipt', async (e) => {
         const t = e.target; t.disabled = true; t.textContent = 'Loading…';
         try { const r = await call('getReceipt', { id: x.id }); RECEIPTS[x.id] = 'data:' + r.type + ';base64,' + r.data; paintReceipt(); }
         catch (err) { toast(navigator.onLine ? err.message : 'Receipts open when you have signal.', true); t.disabled = false; t.textContent = 'View receipt'; }
@@ -2001,6 +2038,17 @@ function expenseSheet(x, presetJob, opts) {
       row.appendChild(add);
     }
     rc.appendChild(row);
+    if (x.checkFile || x.checkLink) {
+      const cb = btn('View check photo', async (e) => {
+        if (RECEIPTS['chk:' + x.id]) return window.open(RECEIPTS['chk:' + x.id], '_blank');
+        if (!x.checkFile && x.checkLink) return window.open(x.checkLink, '_blank');
+        const t = e.target; t.disabled = true; t.textContent = 'Loading…';
+        try { const r = await call('getReceipt', { id: x.id, which: 'check' }); RECEIPTS['chk:' + x.id] = 'data:' + r.type + ';base64,' + r.data; window.open(RECEIPTS['chk:' + x.id], '_blank'); }
+        catch (err) { if (x.checkLink) window.open(x.checkLink, '_blank'); else toast(err.message, true); }
+        t.disabled = false; t.textContent = 'View check photo';
+      }, 'ghost');
+      cb.classList.add('wide'); cb.style.marginTop = '8px'; rc.appendChild(cb);
+    }
   }
   fileIn.onchange = async () => {
     const f = fileIn.files && fileIn.files[0]; fileIn.value = ''; if (!f) return;
@@ -2049,13 +2097,14 @@ async function shareOrDownload(blob, name, type) {
 }
 async function exportExpensesCsv(list) {
   if (!list.length) return toast('Nothing to export.', true);
-  const rows = [['Date', 'Business', 'Vendor', 'Account #', 'Account', 'Type', 'Amount', 'Paid with', 'Project', 'Customer', 'Note', 'Receipt link']];
+  const rows = [['Date', 'Business', 'Vendor', 'Account #', 'Account', 'Type', 'Amount', 'Paid with', 'Paid from', 'Check #', 'Project', 'Customer', 'Note', 'Receipt link']];
   list.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')).forEach(x => {
     const j = docById(x.job), a = acctOf(x.account);
     rows.push([x.date, companyOf(x.business || 'uffg').name || BIZ_NAMES[x.business || 'uffg'], x.vendor, a.code, a.name,
-      a.type === 'cogs' ? 'Job cost' : 'Overhead', r2(x.amount).toFixed(2), x.method, j ? jobLabel(j.id) : '', j ? custName(j.customer) : '', x.note, x.link || (x.receipt ? 'Yes' : '')]);
+      a.type === 'cogs' ? 'Job cost' : 'Overhead', r2(x.amount).toFixed(2), x.method, x.bank ? bankLabel(bankById(x.bank)) : (x.paidBy ? x.paidBy + ' (own money)' : ''), x.checkNo || '',
+      j ? jobLabel(j.id) : '', j ? custName(j.customer) : '', x.note, x.link || (x.receipt ? 'Yes' : '')]);
   });
-  rows.push(['', '', '', '', '', 'Total', sum(list).toFixed(2), '', '', '', '', '']);
+  rows.push(['', '', '', '', '', 'Total', sum(list).toFixed(2), '', '', '', '', '', '', '']);
   const csv = rows.map(r => r.map(csvCell).join(',')).join('\r\n');
   const name = (BIZ_NAMES[BIZ] + ' expenses - ' + PERIOD_LABEL[EXP.period] + (EXP.cat ? ' - ' + EXP.cat : '')).replace(/[\\/:*?"<>|]+/g, '') + '.csv';
   window.__lastCsv = csv;
@@ -2178,7 +2227,8 @@ function vPnl(v) {
   }, 'ghost');
   pdf.classList.add('wide'); pdf.style.marginTop = '12px';
   v.appendChild(pdf);
-  v.appendChild(el('div', 'sub', 'No balance sheet yet — that needs business bank accounts. Sales tax you collect is left out of income.'));
+  v.appendChild(el('div', 'sub', 'Sales tax you collect is left out of income.'));
+  const bsb = btn('Balance sheet ›', () => go('balance'), 'ghost'); bsb.classList.add('wide'); bsb.style.marginTop = '6px'; v.appendChild(bsb);
 }
 
 function buildPnlPdf(business, period, basis) {
@@ -2220,6 +2270,454 @@ function buildPnlPdf(business, period, basis) {
     });
   }
   if (d.drafts) { y -= 8; P.text(M, y, d.drafts + ' receipt(s) totaling ' + money(d.draftsT) + ' still to review are not included.', { size: 8.5, color: MUT }); }
+  P.pages.forEach(ops => { P.ops = ops; P.text(306, 30, 'Prepared ' + fmtDate(today()) + ' from the ' + (co.name || '') + ' app. Unaudited.', { size: 7.5, color: MUT, align: 'center' }); });
+  return P.bytes();
+}
+
+/* ===================== banks, checks, vendors, balance sheet (v2.5) ===================== */
+const BANK_TYPE_LABEL = { checking: 'Checking', savings: 'Savings', card: 'Credit card' };
+const BANKING_LABEL = { contribution: 'Owner put money in', draw: 'Owner took money out', loan_in: 'Loan received', loan_pay: 'Loan payment',
+  tax_pay: 'Sales tax paid', transfer: 'Transfer / card payment', reimburse: 'Paid someone back (out-of-pocket)' };
+const banksAll = () => (biz().banks || []).filter(inBiz);
+const banksOf = () => banksAll().filter(b => b.active !== false);
+const bankById = id => (biz().banks || []).find(b => b.id === id);
+const bankLabel = b => b ? b.name + (b.last4 ? ' ••' + b.last4 : '') : '';
+const bankingAll = () => (biz().banking || []);
+const vendorsOf = () => (biz().vendors || []).filter(inBiz);
+const isCard = b => b && b.type === 'card';
+function defaultBank(kind) {
+  const bs = banksOf().filter(b => kind === 'card' ? isCard(b) : !isCard(b));
+  return bs.length ? bs[0].id : '';
+}
+function bankOptions(sel, none) {
+  return (none ? `<option value="">${esc(none)}</option>` : '') +
+    banksOf().map(b => `<option value="${esc(b.id)}" ${b.id === sel ? 'selected' : ''}>${esc(bankLabel(b) + (isCard(b) ? ' (card)' : ''))}</option>`).join('');
+}
+function peopleNames() {
+  return [...new Set((DATA.team || []).map(t => t.name).concat(expenses().map(x => x.paidBy)).filter(Boolean))];
+}
+function payeeNames() {
+  return [...new Set(vendorsOf().map(v => v.name).concat(expenses().map(e => e.vendor)).filter(Boolean))].slice(0, 120);
+}
+const vendorByName = n => vendorsOf().find(v => vendorKey(v.name) === vendorKey(n));
+
+/* ---- every dollar that moved through an account, signed as cash (+ in, − out) ---- */
+function bankFlows(business) {
+  const inB = x => (x.business || 'uffg') === business;
+  const invIds = new Set(biz().docs.filter(d => d.type === 'invoice' && inB(d) && d.status !== 'Void' && d.status !== 'Draft').map(d => d.id));
+  const out = [];
+  biz().payments.forEach(p => { if (p.bank && invIds.has(p.invoice)) { const inv = docById(p.invoice);
+    out.push({ bank: p.bank, date: p.date, amt: r2(p.amount), kind: 'payment', ref: p, label: 'Deposit · ' + (inv ? custName(inv.customer) : 'Customer'), sub: [inv && inv.number, p.method, p.note].filter(Boolean).join(' · ') }); } });
+  expensesAll().forEach(x => { if (x.bank && inB(x) && booked(x))
+    out.push({ bank: x.bank, date: x.date, amt: -r2(x.amount), kind: 'expense', ref: x, label: (x.checkNo ? 'Check #' + x.checkNo + ' · ' : '') + (x.vendor || 'Expense'), sub: [acctOf(x.account).name, jobLabel(x.job)].filter(Boolean).join(' · ') }); });
+  bankingAll().forEach(t => { if (!inB(t)) return;
+    const lab = BANKING_LABEL[t.type] || t.type, sub = [t.person, t.note].filter(Boolean).join(' · ');
+    if (t.type === 'transfer') {
+      out.push({ bank: t.bank, date: t.date, amt: -r2(t.amount), kind: 'banking', ref: t, label: 'Transfer to ' + bankLabel(bankById(t.toBank)), sub });
+      out.push({ bank: t.toBank, date: t.date, amt: r2(t.amount), kind: 'banking', ref: t, label: 'Transfer from ' + bankLabel(bankById(t.bank)), sub });
+    } else {
+      const sign = (t.type === 'contribution' || t.type === 'loan_in') ? 1 : -1;
+      out.push({ bank: t.bank, date: t.date, amt: sign * r2(t.amount), kind: 'banking', ref: t, label: lab, sub });
+    }
+  });
+  return out;
+}
+/* Balance = opening balance + everything on/after the opening date. Older entries are already inside the opening balance. */
+function bankState(b, flows, asOf) {
+  const sign = isCard(b) ? -1 : 1, mine = flows.filter(f => f.bank === b.id);
+  const pre = b.openingDate ? r2(mine.filter(f => f.date && f.date < b.openingDate).reduce((s, f) => s + f.amt, 0)) : 0;
+  const base = r2(sign * (Number(b.opening) || 0) - pre);           // the "opening balance equity" for this account
+  const bal = r2(base + mine.filter(f => !asOf || (f.date && f.date <= asOf)).reduce((s, f) => s + f.amt, 0));
+  return { base, bal, owed: isCard(b) ? r2(-bal) : 0, flows: mine };
+}
+
+/* ---- Bank & cards list ---- */
+function vBanks(v) {
+  const flows = bankFlows(BIZ), list = banksAll();
+  if (!list.length) v.appendChild(el('div', 'empty', 'No ' + BIZ_NAMES[BIZ] + ' bank accounts yet. Add one to track checks and deposits.'));
+  list.forEach(b => {
+    const st = bankState(b, flows), need = !b.openingDate;
+    v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">${esc(bankLabel(b))}${b.active === false ? ' <span class="pill">Closed</span>' : ''}</div>
+      <div class="meta">${esc([b.institution, BANK_TYPE_LABEL[b.type]].filter(Boolean).join(' · '))}</div>
+      ${need ? '<div class="meta warntext">Set the starting balance to see the real balance</div>' : ''}</div>
+      <div class="rcol"><div class="amt ${st.bal < 0 && !isCard(b) ? 'negtext' : ''}">${money(isCard(b) ? st.owed : st.bal)}</div><div class="meta">${isCard(b) ? 'owed' : 'balance'}</div></div></div>`, () => go('bank', b.id)));
+  });
+  const add = btn('+ Add a bank account or card', () => bankSheet(null), 'ghost'); add.classList.add('wide'); add.style.marginTop = '8px';
+  v.appendChild(add);
+  v.appendChild(el('div', 'sub', 'Checks, deposits and card charges land here when you pick the account on an expense or payment.'));
+}
+
+function bankSheet(b) {
+  const isNew = !b;
+  b = b ? clone(b) : { id: uid(), business: BIZ, name: '', type: 'checking', institution: '', last4: '', opening: 0, openingDate: '', active: true };
+  const f = el('div');
+  f.innerHTML = field('Name', `<input id="bkn" value="${esc(b.name)}" placeholder="Uribest checking">`) +
+    `<div class="grid2">` + field('Type', `<select id="bkt">${Object.keys(BANK_TYPE_LABEL).map(k => `<option value="${k}" ${k === b.type ? 'selected' : ''}>${BANK_TYPE_LABEL[k]}</option>`).join('')}</select>`) +
+    field('Last 4 digits', `<input id="bk4" inputmode="numeric" maxlength="4" value="${esc(b.last4)}" placeholder="1882">`) + `</div>` +
+    field('Bank', `<input id="bki" value="${esc(b.institution)}" placeholder="Bank or credit union">`) +
+    `<div class="grid2">` + field('Starting balance $', `<input id="bko" type="number" inputmode="decimal" step="0.01" value="${b.openingDate || b.opening ? b.opening : ''}" placeholder="0.00">`) +
+    field('As of', `<input id="bkd" type="date" value="${esc(b.openingDate)}">`) + `</div>` +
+    `<div class="hint" id="bkh">From a bank statement: the balance on that date. For a card, what you owed.</div>`;
+  if (!isNew) f.innerHTML += `<label class="check"><input type="checkbox" id="bka" ${b.active === false ? 'checked' : ''}> Account is closed</label>`;
+  f.appendChild(btn(isNew ? 'Add account' : 'Save', () => {
+    b.name = $('#bkn').value.trim(); if (!b.name) return toast('Give it a name.', true);
+    b.type = $('#bkt').value; b.last4 = $('#bk4').value.replace(/\D/g, '').slice(-4); b.institution = $('#bki').value.trim();
+    b.opening = r2($('#bko').value); b.openingDate = $('#bkd').value;
+    if (b.opening && !b.openingDate) return toast('Add the date that balance is from.', true);
+    if ($('#bka')) b.active = !$('#bka').checked;
+    if (!biz().banks) biz().banks = [];
+    upsertLocal(biz().banks, b); saveLocal();
+    enqueue('saveBank', b, 'Bank account'); closeSheet(); toast('Saved'); render();
+  }));
+  openSheet(isNew ? 'New account · ' + BIZ_NAMES[BIZ] : 'Account', f);
+}
+
+/* ---- one account: running balance ---- */
+function vBank(v, id) {
+  const b = bankById(id); if (!b) { v.appendChild(el('div', 'empty', 'Account not found.')); return; }
+  const st = bankState(b, bankFlows(b.business || 'uffg')), card_ = isCard(b);
+  const s = el('div', 'stat');
+  s.innerHTML = `<div><b>${money(card_ ? st.owed : st.bal)}</b><span>${card_ ? 'Owed now' : 'Balance now'}</span></div>
+    <div class="tap" id="bkEdit"><b style="font-size:1rem">${esc(b.institution || '—')}</b><span>${esc(BANK_TYPE_LABEL[b.type])}${b.last4 ? ' ••' + esc(b.last4) : ''} · edit ›</span></div>`;
+  v.appendChild(s); s.querySelector('#bkEdit').onclick = () => bankSheet(b);
+  if (!b.openingDate) {
+    const w = el('div', 'dupwarn tap', '<b>Set the starting balance</b>Enter the balance from a bank statement and its date, so this matches the bank.');
+    w.onclick = () => bankSheet(b); v.appendChild(w);
+  }
+  const g = el('div', 'grid2'); g.style.marginBottom = '12px';
+  if (!card_) g.appendChild(btn('✍ Record a check', () => checkSheet({ bank: b.id })));
+  else g.appendChild(btn('+ Card charge', () => expenseSheet(null, '', { bank: b.id })));
+  g.appendChild(btn('+ Other entry', () => bankTxSheet(null, b.id), 'ghost'));
+  v.appendChild(g);
+  // running balance, oldest first, shown newest first
+  const rows = st.flows.slice().sort((a, c) => (a.date || '').localeCompare(c.date || '') || (a.ref.created || '').localeCompare(c.ref.created || ''));
+  let run = st.base;
+  rows.forEach(r => { run = r2(run + r.amt); r.run = run; r.before = b.openingDate && r.date < b.openingDate; });
+  if (!rows.length) v.appendChild(el('div', 'empty', card_ ? 'No charges yet. Pick this card as “Paid from” on an expense.' : 'Nothing yet. Record a check, or pick this account when you record a payment.'));
+  let last = '';
+  rows.reverse().forEach(r => {
+    if (r.date !== last) { last = r.date; v.appendChild(el('div', 'dhead', esc(fmtDate(r.date) || 'No date'))); }
+    const amt = card_ ? -r.amt : r.amt;
+    const c = card(`<div class="row"><div class="grow"><div class="ttl">${esc(r.label)}</div><div class="meta">${esc(r.sub)}${r.before ? ' · before starting balance' : ''}</div></div>
+      <div class="rcol"><div class="amt ${amt < 0 ? '' : 'pos'}">${amt > 0 ? '+' : ''}${money(amt)}</div><div class="meta">${money(card_ ? -r.run : r.run)}</div></div></div>`, () => {
+      if (r.kind === 'expense') expenseSheet(r.ref);
+      else if (r.kind === 'payment') openDoc(r.ref.invoice);
+      else bankTxSheet(r.ref);
+    });
+    v.appendChild(c);
+  });
+}
+
+/* ---- owner money, loans, transfers, sales tax, paying someone back ---- */
+function bankTxSheet(t, bankId) {
+  const isNew = !t;
+  t = t ? clone(t) : { id: uid(), business: BIZ, type: 'contribution', date: today(), amount: 0, bank: bankId || defaultBank(), toBank: '', person: '', note: '' };
+  const f = el('div');
+  f.innerHTML = field('What is it', `<select id="ttp">${Object.keys(BANKING_LABEL).map(k => `<option value="${k}" ${k === t.type ? 'selected' : ''}>${BANKING_LABEL[k]}</option>`).join('')}</select><div class="hint" id="tth"></div>`) +
+    `<div class="grid2">` + field('Amount $', `<input id="tam" type="number" inputmode="decimal" step="0.01" value="${t.amount || ''}">`) + field('Date', `<input id="tdt" type="date" value="${esc(t.date)}">`) + `</div>` +
+    field('Account', `<select id="tbk">${bankOptions(t.bank)}</select>`) +
+    `<div id="tTo">` + field('Money went to', `<select id="tto">${bankOptions(t.toBank, 'Pick an account…')}</select>`) + `</div>` +
+    `<div id="tPer">` + field('Who', `<input id="tpe" list="tpl" value="${esc(t.person)}" placeholder="Ricardo Uribe"><datalist id="tpl">${peopleNames().map(n => `<option value="${esc(n)}">`).join('')}</datalist>`) + `</div>` +
+    field('Note', `<input id="tno" value="${esc(t.note)}">`);
+  const HINT = { contribution: 'Personal money put into the business. Not income.', draw: 'Money the owner took for themselves. Not an expense.',
+    loan_in: 'Borrowed money. Shows as a loan you owe.', loan_pay: 'Paying down the loan (principal). Interest is an expense.',
+    tax_pay: 'Sales tax sent to the state.', transfer: 'Moving money between accounts, or paying a credit card bill.',
+    reimburse: 'Paying someone back for business expenses they covered with their own money.' };
+  const acts = el('div', 'actions');
+  acts.appendChild(btn(isNew ? 'Save' : 'Save changes', () => {
+    t.type = $('#ttp').value; t.amount = r2($('#tam').value); t.date = $('#tdt').value || today();
+    t.bank = $('#tbk').value; t.toBank = t.type === 'transfer' ? $('#tto').value : ''; t.person = $('#tpe').value.trim(); t.note = $('#tno').value.trim();
+    if (t.amount <= 0) return toast('Enter the amount.', true);
+    if (!t.bank) return toast('Add a bank account first (More → Bank & cards).', true);
+    if (t.type === 'transfer' && (!t.toBank || t.toBank === t.bank)) return toast('Pick the account the money went to.', true);
+    if (!biz().banking) biz().banking = [];
+    upsertLocal(biz().banking, Object.assign({ created: new Date().toISOString() }, t)); saveLocal();
+    enqueue('saveBankTx', t, BANKING_LABEL[t.type]); closeSheet(); toast('Saved'); render();
+  }));
+  if (!isNew) acts.appendChild(btn('Delete', () => confirmSheet('Delete this entry?', BANKING_LABEL[t.type] + ' · ' + money(t.amount), 'Delete', () => {
+    biz().banking = bankingAll().filter(x => x.id !== t.id); saveLocal(); enqueue('deleteBankTx', { id: t.id }, 'Entry'); render();
+  }, true), 'ghost dangertext'));
+  f.appendChild(acts);
+  openSheet(isNew ? 'Bank entry · ' + BIZ_NAMES[BIZ] : 'Bank entry', f);
+  const paint = () => { const k = $('#ttp').value; $('#tth').textContent = HINT[k] || '';
+    $('#tTo').classList.toggle('hide', k !== 'transfer'); $('#tPer').classList.toggle('hide', !['reimburse', 'contribution', 'draw'].includes(k)); };
+  $('#ttp').onchange = paint; paint();
+}
+
+/* ---- a check: snap it, read it, match it to what it paid ---- */
+function checkSheet(opts) {
+  opts = opts || {};
+  if (!banksOf().filter(b => !isCard(b)).length) { toast('Add the checking account first (More → Bank & cards).', true); return go('banks'); }
+  const x = { id: uid(), business: BIZ, status: 'Booked', date: today(), vendor: '', account: '', amount: 0, method: 'Check', job: opts.job || '', note: '',
+              bank: opts.bank || defaultBank(), checkNo: '' };
+  let scanned = null, pending = null, preview = null, status = '', busy = false, matchId = '', serverMatches = [], sameNo = [];
+  const touched = {};
+  const jobs = jobOptions();
+  const acctOpts = sel => ['cogs', 'expense'].map(t => `<optgroup label="${t === 'cogs' ? 'Job costs' : 'Overhead'}">` +
+    accounts().filter(a => a.type === t).map(a => `<option value="${esc(a.name)}" ${a.name === sel ? 'selected' : ''}>${esc(a.code + ' · ' + a.name)}</option>`).join('') + '</optgroup>').join('');
+  const f = el('div');
+  f.innerHTML = `<div class="receipt" id="crc"></div><input id="cfile" type="file" accept="image/*" class="hide">
+    <div id="cmatch"></div>` +
+    `<div class="grid2">` + field('Check #', `<input id="cno" inputmode="numeric" placeholder="1227">`) + field('Date', `<input id="cdt" type="date" value="${today()}">`) + `</div>` +
+    field('Pay to', `<input id="cpy" list="cpl" placeholder="Vendor or subcontractor" autocomplete="off"><datalist id="cpl">${payeeNames().map(n => `<option value="${esc(n)}">`).join('')}</datalist>`) +
+    `<label class="check"><input type="checkbox" id="csub"> Subcontractor (track what we pay them for 1099s)</label>` +
+    `<div class="grid2">` + field('Amount $', `<input id="cam" class="money" type="number" inputmode="decimal" step="0.01" placeholder="0.00">`) +
+    field('From account', `<select id="cbk">${banksOf().filter(b => !isCard(b)).map(b => `<option value="${esc(b.id)}" ${b.id === x.bank ? 'selected' : ''}>${esc(bankLabel(b))}</option>`).join('')}</select>`) + `</div>` +
+    `<div id="cnew">` + field('Book to account', `<select id="cac"><option value="">Pick an account…</option>${acctOpts('')}</select><div class="hint" id="cah"></div>`) +
+    field('Project (for job costing)', `<select id="cjb"><option value="">No project — general overhead</option>${jobs.map(j => `<option value="${esc(j.id)}" ${j.id === x.job ? 'selected' : ''}>${esc(jobLabel(j.id) + ' — ' + custName(j.customer))}</option>`).join('')}</select>`) + `</div>` +
+    field('Memo', `<input id="cmo" placeholder="What it was for">`);
+  f.appendChild(btn('Save check', save));
+  openSheet('Check · ' + BIZ_NAMES[BIZ], f);
+
+  function localMatches() {
+    const amt = r2($('#cam').value), d = $('#cdt').value, pk = vendorKey($('#cpy').value);
+    if (!amt) return [];
+    return expenses().filter(e => !e.checkNo && Math.abs(r2(e.amount) - amt) < 0.005 &&
+      (!d || !e.date || Math.abs(new Date(e.date) - new Date(d)) <= 60 * 864e5))
+      .sort((a, b) => (vendorKey(b.vendor) === pk) - (vendorKey(a.vendor) === pk)).slice(0, 4);
+  }
+  function paintMatch() {
+    const box = $('#cmatch'); if (!box) return;
+    const no = $('#cno').value.trim().replace(/^#/, ''), bk = $('#cbk').value;
+    const dupNo = no ? expenses().filter(e => e.checkNo === no && (!e.bank || e.bank === bk)) : [];
+    const ms = localMatches(); serverMatches.forEach(m => { if (!ms.find(e => e.id === m.id)) { const e = expensesAll().find(z => z.id === m.id) || m; ms.push(e); } });
+    let h = '';
+    if (dupNo.length) h += `<div class="dupwarn"><b>⚠ Check #${esc(no)} is already recorded</b>${esc(dupNo[0].vendor || '')} · ${money(dupNo[0].amount)} · ${esc(fmtDate(dupNo[0].date))}</div>`;
+    if (ms.length) {
+      h += `<div class="matchbox"><b>Does this check pay one of these?</b>` + ms.map(e => `<label class="mrow"><input type="radio" name="cm" value="${esc(e.id)}" ${matchId === e.id ? 'checked' : ''}>
+        <span class="grow">${esc(e.vendor || 'Expense')}<span class="meta"> · ${esc(fmtDate(e.date))} · ${esc(acctOf(e.account).name)}${e.job ? ' · ' + esc(jobLabel(e.job)) : ''}</span></span><b>${money(e.amount)}</b></label>`).join('') +
+        `<label class="mrow"><input type="radio" name="cm" value="" ${matchId ? '' : 'checked'}><span class="grow">No — it’s a new expense</span></label></div>`;
+    }
+    box.innerHTML = h;
+    box.querySelectorAll('input[name=cm]').forEach(r => r.onchange = () => { matchId = r.value; $('#cnew').classList.toggle('hide', !!matchId); });
+    if (matchId && !ms.find(e => e.id === matchId)) matchId = '';
+    $('#cnew').classList.toggle('hide', !!matchId);
+  }
+  function suggest() {
+    const pay = $('#cpy').value, v = vendorByName(pay);
+    if (!touched.csub) $('#csub').checked = !!(v && v.type === 'contractor') || $('#cac').value === 'Subcontractors';
+    if (!touched.cac) { const s = suggestAccount(pay); if (s) { $('#cac').value = s; $('#cah').textContent = 'Booked here last time for this payee.'; } }
+  }
+  f.addEventListener('input', e => { if (e.target.id) touched[e.target.id] = true; if (e.target.id === 'cpy') suggest(); if (['cam', 'cno', 'cdt', 'cpy'].includes(e.target.id)) paintMatch(); });
+  f.addEventListener('change', e => { if (e.target.id) touched[e.target.id] = true; if (e.target.id === 'cac' && !touched.csub && e.target.value === 'Subcontractors') $('#csub').checked = true; if (e.target.id === 'cbk') paintMatch(); });
+
+  const rc = $('#crc'), fileIn = $('#cfile');
+  function paintPhoto() {
+    rc.innerHTML = '';
+    if (status) rc.appendChild(el('div', 'scanstat' + (busy ? ' busy' : ''), status));
+    if (preview) { const im = el('img'); im.src = preview; im.alt = 'Check'; rc.appendChild(im); }
+    const b = btn(preview ? 'Retake photo' : '📷  Take or choose a photo of the check', () => fileIn.click(), 'ghost'); b.classList.add('wide');
+    rc.appendChild(b);
+  }
+  fileIn.onchange = async () => {
+    const file = fileIn.files && fileIn.files[0]; fileIn.value = ''; if (!file) return;
+    let img; try { img = await shrinkImage(file, 2000, 0.85); } catch (e) { return toast(e.message, true); }
+    preview = img.preview; scanned = null; pending = null;
+    if (!navigator.onLine) { pending = img; status = 'No signal — the photo uploads when you save. Type the details.'; return paintPhoto(); }
+    busy = true; status = 'Saving to Drive and reading the check…'; paintPhoto();
+    try {
+      const r = await call('scanCheck', { business: x.business, image: { data: img.data, type: img.type }, bank: $('#cbk').value, id: x.id });
+      scanned = { fileId: r.fileId };
+      const set = (id, val) => { const n = $('#' + id); if (n && val && !touched[id]) n.value = val; };
+      set('cno', r.checkNo); if (r.date) set('cdt', r.date); set('cpy', r.payee); set('cam', r.amount ? r.amount.toFixed(2) : ''); set('cmo', r.memo);
+      if (r.account && !touched.cac) $('#cac').value = r.account;
+      serverMatches = r.matches || [];
+      suggest();
+      const got = [r.checkNo ? '#' + r.checkNo : '', r.payee, r.amount ? money(r.amount) : ''].filter(Boolean);
+      const words = r.amountWords && r.amount && Math.abs(r.amountWords - r.amount) > 0.005 ? ` The written amount reads ${money(r.amountWords)} — check which is right.` : '';
+      status = !r.read ? '✓ Saved to Drive. Couldn’t read the writing — type the details.' : (got.length ? '✓ Saved to Drive · read ' + got.join(' · ') + '. Check it, then save.' : '✓ Saved to Drive. Type the details.') + words;
+      if (serverMatches.length && !touched.cm) matchId = serverMatches[0].score >= 2 ? serverMatches[0].id : '';
+    } catch (e) { pending = img; status = 'Couldn’t reach the server — the photo uploads when you save.'; }
+    busy = false; paintPhoto(); paintMatch();
+  };
+
+  function save() {
+    if (busy) return toast('Still reading the check — one sec.', true);
+    const amount = r2($('#cam').value), checkNo = $('#cno').value.trim().replace(/^#/, ''), bank = $('#cbk').value;
+    const payee = $('#cpy').value.trim(), date = $('#cdt').value || today(), memo = $('#cmo').value.trim();
+    if (amount <= 0) return toast('Enter the check amount.', true);
+    if (!payee && !matchId) return toast('Who was the check made out to?', true);
+    let rec;
+    if (matchId) {                                   // pay an expense that's already in the books
+      const e = expensesAll().find(z => z.id === matchId);
+      rec = Object.assign(clone(e), { bank, checkNo, method: 'Check', paidBy: '', status: 'Booked' });
+      if (!rec.vendor) rec.vendor = payee;
+      if (memo && !(rec.note || '').includes(memo)) rec.note = [rec.note, memo].filter(Boolean).join(' · ');
+    } else {
+      const account = $('#cac').value; if (!account) return toast('Pick the account to book it to.', true);
+      rec = Object.assign(x, { date, vendor: payee, account, amount, job: $('#cjb').value, note: memo, bank, checkNo, paidBy: '' });
+    }
+    if (scanned || pending) { rec.checkFile = true; RECEIPTS['chk:' + rec.id] = preview; }
+    if (!biz().expenses) biz().expenses = [];
+    upsertLocal(biz().expenses, Object.assign({ created: new Date().toISOString() }, rec));
+    const payload = Object.assign({}, rec); ['receipt', 'dupOf', 'link', 'file', 'checkFile', 'checkLink', 'score', 'created', 'createdBy', 'hash', 'scanned'].forEach(k => delete payload[k]);
+    if (scanned) payload.checkFile = scanned.fileId; else if (pending) payload.checkImage = { data: pending.data, type: pending.type };
+    payload.notDuplicate = true;
+    enqueue('saveExpense', payload, 'Check #' + (checkNo || '') + ' ' + money(amount));
+    if ($('#csub').checked && payee) {
+      const v = vendorByName(payee);
+      if (!v || v.type !== 'contractor') {
+        const nv = Object.assign(v ? clone(v) : { id: uid(), business: BIZ, name: payee, phone: '', email: '', notes: '' }, { type: 'contractor' });
+        if (!biz().vendors) biz().vendors = []; upsertLocal(biz().vendors, nv); enqueue('saveVendor', nv, 'Subcontractor');
+      }
+    }
+    saveLocal(); closeSheet(); toast(matchId ? 'Check matched to ' + (rec.vendor || 'the expense') : 'Check saved'); render();
+  }
+  paintPhoto(); paintMatch();
+  if (opts.scan !== false) fileIn.click();
+}
+
+/* ---- vendors & subcontractors ---- */
+function vVendors(v) {
+  const yr = periodRange('year'), paid = {};
+  expenses().filter(x => booked(x) && inRange(x.date, yr)).forEach(x => { const k = vendorKey(x.vendor); if (k) { paid[k] = paid[k] || { name: x.vendor, amt: 0, n: 0 }; paid[k].amt = r2(paid[k].amt + x.amount); paid[k].n++; } });
+  const add = btn('+ Add vendor or subcontractor', () => vendorSheet(null)); add.classList.add('wide'); add.style.marginBottom = '10px'; v.appendChild(add);
+  const subs = vendorsOf().filter(x => x.type === 'contractor'), others = vendorsOf().filter(x => x.type !== 'contractor');
+  v.appendChild(el('h2', null, 'Subcontractors · paid this year'));
+  if (!subs.length) v.appendChild(el('div', 'empty sm', 'Mark someone as a subcontractor when you write them a check.'));
+  subs.sort((a, b) => ((paid[vendorKey(b.name)] || {}).amt || 0) - ((paid[vendorKey(a.name)] || {}).amt || 0)).forEach(s => {
+    const p = paid[vendorKey(s.name)] || { amt: 0, n: 0 };
+    v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">${esc(s.name)}</div><div class="meta">${esc([s.phone, s.email].filter(Boolean).join(' · ') || 'Subcontractor')}</div></div>
+      <div class="rcol"><div class="amt">${money(p.amt)}</div><div class="meta">${p.n} payment${p.n === 1 ? '' : 's'}</div></div></div>`, () => vendorSheet(s)));
+  });
+  v.appendChild(el('div', 'sub', 'Ask your accountant which subcontractors need a 1099 at year end. This list is what you paid each one.'));
+  v.appendChild(el('h2', null, 'Top payees this year'));
+  const top = Object.values(paid).sort((a, b) => b.amt - a.amt).slice(0, 15);
+  if (!top.length) v.appendChild(el('div', 'empty sm', 'No expenses this year yet.'));
+  top.forEach(p => v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">${esc(p.name)}</div><div class="meta">${p.n} expense${p.n === 1 ? '' : 's'}${vendorByName(p.name) ? '' : ''}</div></div><div class="amt">${money(p.amt)}</div></div>`,
+    () => { FILTER.q = p.name; EXP.period = 'year'; EXP.cat = ''; VIEW = 'expenses'; ROUTES = []; render(); })));
+  if (others.length) {
+    v.appendChild(el('h2', null, 'Saved vendors'));
+    others.forEach(s => v.appendChild(card(`<div class="ttl">${esc(s.name)}</div><div class="meta">${esc([s.phone, s.email].filter(Boolean).join(' · ') || 'Vendor')}</div>`, () => vendorSheet(s))));
+  }
+}
+function vendorSheet(s) {
+  const isNew = !s;
+  s = s ? clone(s) : { id: uid(), business: BIZ, name: '', type: 'contractor', phone: '', email: '', notes: '' };
+  const f = el('div');
+  f.innerHTML = field('Name', `<input id="vnm" value="${esc(s.name)}">`) +
+    field('Type', `<select id="vty"><option value="contractor" ${s.type === 'contractor' ? 'selected' : ''}>Subcontractor</option><option value="vendor" ${s.type !== 'contractor' ? 'selected' : ''}>Vendor / store</option></select>`) +
+    `<div class="grid2">` + field('Phone', `<input id="vph" type="tel" value="${esc(s.phone)}">`) + field('Email', `<input id="vem" type="email" value="${esc(s.email)}">`) + `</div>` +
+    field('Notes', `<input id="vno" value="${esc(s.notes)}" placeholder="Trade, W-9 on file…">`);
+  const acts = el('div', 'actions');
+  acts.appendChild(btn('Save', () => {
+    s.name = $('#vnm').value.trim(); if (!s.name) return toast('Give it a name.', true);
+    s.type = $('#vty').value; s.phone = $('#vph').value.trim(); s.email = $('#vem').value.trim(); s.notes = $('#vno').value.trim();
+    if (!biz().vendors) biz().vendors = []; upsertLocal(biz().vendors, s); saveLocal();
+    enqueue('saveVendor', s, 'Vendor'); closeSheet(); toast('Saved'); render();
+  }));
+  if (!isNew) acts.appendChild(btn('Remove from list', () => { biz().vendors = (biz().vendors || []).filter(x => x.id !== s.id); saveLocal(); enqueue('archiveVendor', { id: s.id }, 'Vendor'); closeSheet(); render(); }, 'ghost dangertext'));
+  f.appendChild(acts);
+  openSheet(isNew ? 'New vendor · ' + BIZ_NAMES[BIZ] : s.name, f);
+}
+
+/* ===================== balance sheet ===================== */
+let BS = { asOf: LS.get('uffg.bsAsOf', 'today') };
+function bsDate(k) {
+  const t = new Date();
+  if (k === 'lastmonth') return ymd(new Date(t.getFullYear(), t.getMonth(), 0));
+  if (k === 'lastyear') return (t.getFullYear() - 1) + '-12-31';
+  if (k === 'quarter') { const q = Math.floor(t.getMonth() / 3) * 3; return ymd(new Date(t.getFullYear(), q, 0)); }
+  return today();
+}
+function bsData(business, asOf) {
+  const inB = x => (x.business || 'uffg') === business, upTo = d => !!d && d <= asOf;
+  const yStart = asOf.slice(0, 4) + '-01-01';
+  const invs = biz().docs.filter(d => d.type === 'invoice' && inB(d) && d.status !== 'Void' && d.status !== 'Draft');
+  const invIds = new Set(invs.map(i => i.id));
+  const pays = biz().payments.filter(p => invIds.has(p.invoice) && upTo(p.date));
+  const flows = bankFlows(business);
+  const banks = (biz().banks || []).filter(inB).map(b => Object.assign({ b }, bankState(b, flows, asOf)));
+  const cash = banks.filter(x => !isCard(x.b)), cards = banks.filter(x => isCard(x.b));
+  const undeposited = r2(pays.filter(p => !p.bank).reduce((s, p) => s + p.amount, 0));
+  const invTot = invs.filter(i => upTo(i.date)), arRaw = r2(invTot.reduce((s, i) => s + totals(i).total, 0) - pays.reduce((s, p) => s + p.amount, 0));
+  const bk = bankingAll().filter(t => inB(t) && upTo(t.date)), bsum = type => r2(bk.filter(t => t.type === type).reduce((s, t) => s + t.amount, 0));
+  const taxDue = r2(invTot.reduce((s, i) => s + totals(i).tax, 0) - bsum('tax_pay'));
+  const loans = r2(bsum('loan_in') - bsum('loan_pay'));
+  const xs = expensesAll().filter(x => inB(x) && booked(x) && upTo(x.date));
+  const owed = {};
+  xs.filter(x => !x.bank).forEach(x => { const k = x.paidBy || 'Not set'; owed[k] = r2((owed[k] || 0) + x.amount); });
+  bk.filter(t => t.type === 'reimburse').forEach(t => { const k = t.person || 'Not set'; owed[k] = r2((owed[k] || 0) - t.amount); });
+  const ni = (from, to) => r2(invs.filter(i => i.date && i.date >= from && i.date <= to).reduce((s, i) => { const t = totals(i); return s + t.total - t.tax; }, 0) -
+    xs.filter(x => x.date >= from && x.date <= to).reduce((s, x) => s + x.amount, 0));
+  const assets = cash.map(x => ({ label: bankLabel(x.b), amount: x.bal, bank: x.b.id }));
+  if (undeposited) assets.push({ label: 'Payments not deposited yet', amount: undeposited });
+  if (arRaw > 0) assets.push({ label: 'Accounts receivable (customers owe)', amount: arRaw });
+  const liabs = cards.map(x => ({ label: bankLabel(x.b) + ' (card balance)', amount: x.owed, bank: x.b.id }));
+  if (arRaw < 0) liabs.push({ label: 'Customer deposits (paid before invoiced)', amount: -arRaw });
+  if (taxDue) liabs.push({ label: 'Sales tax to pay', amount: taxDue });
+  if (loans) liabs.push({ label: 'Loans', amount: loans });
+  Object.keys(owed).filter(k => owed[k]).sort().forEach(k => liabs.push({ label: k === 'Not set' ? 'Out-of-pocket expenses (who paid not set)' : 'Owed to ' + k + ' (out-of-pocket expenses)', amount: owed[k], person: k }));
+  const obe = r2(banks.reduce((s, x) => s + x.base, 0));
+  const equity = [];
+  if (obe) equity.push({ label: 'Starting balances (opening equity)', amount: obe });
+  if (bsum('contribution')) equity.push({ label: 'Owner contributions', amount: bsum('contribution') });
+  if (bsum('draw')) equity.push({ label: 'Owner draws', amount: -bsum('draw') });
+  const re = ni('0000-01-01', addDays(yStart, -1)), cur = ni(yStart, asOf);
+  if (re) equity.push({ label: 'Retained earnings (prior years)', amount: re });
+  equity.push({ label: 'Net income this year', amount: cur });
+  const T = list => r2(list.reduce((s, r) => s + r.amount, 0));
+  const tA = T(assets), tL = T(liabs), tE = T(equity);
+  return { asOf, assets, liabs, equity, tA, tL, tE, off: r2(tA - tL - tE), noOpening: cash.concat(cards).filter(x => !x.b.openingDate).map(x => x.b),
+           drafts: expensesAll().filter(x => inB(x) && !booked(x)).length };
+}
+
+function vBalance(v) {
+  const asOf = bsDate(BS.asOf), d = bsData(BIZ, asOf);
+  chipRow(v, [['today', 'Today'], ['lastmonth', 'End of last month'], ['quarter', 'End of last quarter'], ['lastyear', 'End of last year']], BS.asOf, k => { BS.asOf = k; LS.set('uffg.bsAsOf', k); render(); });
+  if (!banksAll().length) {
+    const w = el('div', 'dupwarn tap', '<b>No bank accounts yet</b>Add your checking account so the balance sheet shows your cash.'); w.onclick = () => go('banks'); v.appendChild(w);
+  } else if (d.noOpening.length) {
+    const w = el('div', 'dupwarn tap', `<b>Starting balance missing</b>${esc(d.noOpening.map(bankLabel).join(', '))}: enter the balance from a statement so cash is right.`);
+    w.onclick = () => d.noOpening.length === 1 ? go('bank', d.noOpening[0].id) : go('banks'); v.appendChild(w);
+  }
+  if (d.drafts) { const w = el('div', 'dupwarn tap', `<b>${d.drafts} receipt${d.drafts > 1 ? 's' : ''} still to review</b>Not in these numbers yet.`); w.onclick = () => goTab('expenses'); v.appendChild(w); }
+  const c = el('div', 'card pnl');
+  const rows = list => list.length ? list.map(r => `<div class="trow ${r.bank ? 'tap' : ''}" ${r.bank ? `data-bank="${esc(r.bank)}"` : ''}><span>${esc(r.label)}</span><span>${money(r.amount)}</span></div>`).join('') : '<div class="trow"><span>None</span><span></span></div>';
+  c.innerHTML = `<div class="kicker">${esc(companyOf(BIZ).name || BIZ_NAMES[BIZ])}</div><div class="meta">As of ${esc(fmtDate(asOf))}</div>
+    <div class="psec">What the business has</div>${rows(d.assets)}<div class="trow big"><span>Total assets</span><span>${money(d.tA)}</span></div>
+    <div class="psec">What it owes</div>${rows(d.liabs)}<div class="trow sub1"><span>Total liabilities</span><span>${money(d.tL)}</span></div>
+    <div class="psec">Owner’s equity</div>${rows(d.equity)}<div class="trow sub1"><span>Total equity</span><span>${money(d.tE)}</span></div>
+    <div class="trow big total"><span>Liabilities + equity</span><span>${money(r2(d.tL + d.tE))}</span></div>`;
+  c.querySelectorAll('[data-bank]').forEach(r => r.onclick = () => go('bank', r.dataset.bank));
+  v.appendChild(c);
+  v.appendChild(el('div', 'sub', Math.abs(d.off) < 0.01 ? '✓ Balanced: assets equal liabilities plus equity. Invoices count when sent; sales tax is held separately.' : 'Off by ' + money(d.off) + ' — tell Michelle.'));
+  const g = el('div', 'grid2'); g.style.marginTop = '12px';
+  g.appendChild(btn('Bank & cards', () => go('banks'), 'ghost'));
+  g.appendChild(btn('Share as PDF', async () => {
+    const bytes = buildBsPdf(BIZ, asOf); window.__lastBsPdf = bytes;
+    await shareOrDownload(new Blob([bytes], { type: 'application/pdf' }), (BIZ_NAMES[BIZ] + ' balance sheet ' + asOf) + '.pdf', 'application/pdf');
+  }, 'ghost'));
+  v.appendChild(g);
+}
+
+function buildBsPdf(business, asOf) {
+  const d = bsData(business, asOf), co = companyOf(business), isUB = business === 'uribest';
+  const C = hexRgb(co.color, isUB ? [31, 79, 180] : [46, 107, 79]), MUT = [110, 116, 124], LINE = [222, 216, 205];
+  const P = new PdfDoc(), M = 64, R = 612 - M;
+  let y = 792 - 56;
+  if (isUB) { P.wordmark(M, y - 22, 22, C); y -= 40; } else { P.logo(M, y - 46, 46, C); y -= 4; }
+  P.text(isUB ? M : M + 58, isUB ? y : y - 16, co.name || BIZ_NAMES[business], { size: 12, bold: true });
+  y -= isUB ? 30 : 64;
+  P.text(306, y, 'Balance Sheet', { size: 20, bold: true, color: C, align: 'center' }); y -= 16;
+  P.text(306, y, 'As of ' + fmtDate(asOf), { size: 9.5, color: MUT, align: 'center' }); y -= 30;
+  const row = (label, amt, o) => {
+    o = o || {};
+    if (y < 70) { P.addPage(); y = 792 - 56; }
+    if (o.bar) { P.rect(M - 6, y - 6, R - M + 12, 19, C); P.text(M, y, label, { size: 10.5, bold: true, color: [255, 255, 255] }); P.text(R, y, money(amt), { size: 10.5, bold: true, color: [255, 255, 255], align: 'right' }); y -= 26; return; }
+    P.text(M + (o.indent ? 14 : 0), y, label, { size: o.bold ? 10.5 : 10, bold: !!o.bold });
+    P.text(R, y, money(amt), { size: o.bold ? 10.5 : 10, bold: !!o.bold, align: 'right' });
+    if (o.rule) P.line(M, y + 13, R, y + 13, LINE, 0.6);
+    y -= o.bold ? 20 : 16;
+  };
+  const head = t => { y -= 4; P.text(M, y, t.toUpperCase(), { size: 8, bold: true, color: C }); y -= 15; };
+  head('Assets'); (d.assets.length ? d.assets : [{ label: 'None', amount: 0 }]).forEach(r => row(r.label, r.amount, { indent: true }));
+  row('Total assets', d.tA, { bar: true });
+  head('Liabilities'); (d.liabs.length ? d.liabs : [{ label: 'None', amount: 0 }]).forEach(r => row(r.label, r.amount, { indent: true }));
+  row('Total liabilities', d.tL, { bold: true, rule: true });
+  head('Equity'); d.equity.forEach(r => row(r.label, r.amount, { indent: true }));
+  row('Total equity', d.tE, { bold: true, rule: true });
+  row('Total liabilities & equity', r2(d.tL + d.tE), { bar: true });
   P.pages.forEach(ops => { P.ops = ops; P.text(306, 30, 'Prepared ' + fmtDate(today()) + ' from the ' + (co.name || '') + ' app. Unaudited.', { size: 7.5, color: MUT, align: 'center' }); });
   return P.bytes();
 }
