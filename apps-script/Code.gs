@@ -4,7 +4,7 @@
  * Columns are always found by header NAME, never by position.
  */
 
-var VERSION   = '2.5.0';
+var VERSION   = '2.6.0';
 var SHEET_ID  = ''; // leave blank to use the sheet this script is bound to
 var CODE_TTL  = 10 * 60 * 1000;        // 6-digit code lifetime
 var CODE_TRIES= 5;
@@ -26,7 +26,7 @@ var TABS = {
   Services:  ['ID','BUSINESS','NAME','DESCRIPTION','UNIT','PRICE','TAXABLE','ACTIVE'],
   Docs:      ['ID','BUSINESS','TYPE','NUMBER','CUSTOMER','TITLE','SITE','STATUS','DATE','DUE','PARENT','LINES',
               'TAX RATE','DISCOUNT','DEPOSIT','NOTES','TERMS','SUBTOTAL','TAX','TOTAL','PAID','BILLED',
-              'SENT AT','APPROVED AT','CREATED BY','CREATED','UPDATED','DELETED'],
+              'SENT AT','APPROVED AT','CREATED BY','CREATED','UPDATED','DELETED','BUDGET'],
   Payments:  ['ID','INVOICE','DATE','AMOUNT','METHOD','NOTE','WHO','DELETED','BANK'],
   Expenses:  ['ID','BUSINESS','STATUS','DATE','VENDOR','ACCOUNT','AMOUNT','METHOD','JOB','NOTE','RECEIPT',
               'RECEIPT LINK','HASH','DUP OF','SCANNED','CREATED BY','CREATED','UPDATED','DELETED',
@@ -190,6 +190,19 @@ function requestCode_(args) {
     }
   }
 
+  var code = newCode_(email, existing);
+  MailApp.sendEmail({
+    to: email,
+    subject: code + ' is your ' + BRAND + ' inventory code',
+    body: 'Your sign-in code is ' + code + '\n\n' +
+          'It expires in 10 minutes. If you did not ask for this, ignore this email.\n',
+    name: BRAND + ' Inventory'
+  });
+  return { sent: true };
+}
+
+/** Store a fresh 6-digit code (hashed) for this email and return it. */
+function newCode_(email, existing) {
   var code = String(Math.floor(100000 + Math.random() * 900000));
   var rec = {
     'EMAIL': email,
@@ -199,15 +212,19 @@ function requestCode_(args) {
     'LAST SENT': now_()
   };
   if (existing) update_('Auth', existing._row, rec); else append_('Auth', rec);
+  return code;
+}
 
-  MailApp.sendEmail({
-    to: email,
-    subject: code + ' is your ' + BRAND + ' inventory code',
-    body: 'Your sign-in code is ' + code + '\n\n' +
-          'It expires in 10 minutes. If you did not ask for this, ignore this email.\n',
-    name: BRAND + ' Inventory'
-  });
-  return { sent: true };
+/** A manager can hand a teammate a code in person when the email doesn't arrive. */
+function issueCode_(a, me) {
+  mustManage_(me);
+  var email = lower_(a.email), member = teamMember_(email);
+  if (!member) throw new Error('That person isn’t on the Team list.');
+  var existing = null;
+  rows_('Auth').forEach(function (r) { if (lower_(r['EMAIL']) === email) existing = r; });
+  var code = newCode_(email, existing);
+  log_(me.name, 'Gave a sign-in code', 'Team', member.name, '', '', '', '');
+  return { code: code };
 }
 
 function hash_(s) {
@@ -1179,6 +1196,26 @@ function authorizeDrive() {
   DocumentApp.getActiveDocument;   // makes Google ask for Docs permission too (used to read scanned text)
 }
 
+/* ---- job budgets: what each category of a job should cost ---- */
+
+function parseBudget_(v) {
+  try { var b = JSON.parse(norm_(v) || 'null'); return Array.isArray(b) ? b : []; } catch (e) { return []; }
+}
+function saveBudget_(a, me) {
+  mustManage_(me);
+  var r = docRow_(a.id);
+  if (!r) throw new Error('Project not found.');
+  var known = {}; ACCOUNTS.forEach(function (x) { known[x.name] = 1; });
+  var taken = {};
+  var lines = (Array.isArray(a.budget) ? a.budget : []).slice(0, 40).map(function (l) {
+    var accts = (Array.isArray(l && l.accounts) ? l.accounts : []).filter(function (n) { n = norm_(n); var ok = known[n] && !taken[n]; taken[n] = 1; return ok; });
+    return { name: norm_(l && l.name).slice(0, 100), amount: r2_(l && l.amount), accounts: accts, note: norm_(l && l.note).slice(0, 200) };
+  }).filter(function (l) { return l.name || l.amount || l.accounts.length; });
+  writeRow_('Docs', r._row, { 'BUDGET': JSON.stringify(lines), 'UPDATED': now_().toISOString() });
+  log_(me.name, 'Updated budget', 'Doc', norm_(r['NUMBER']), '', '', '', '');
+  return { ok: true, lines: lines.length };
+}
+
 /* ---- banks, cards, checks ---- */
 
 var BANK_TYPES = { checking: 'Checking', savings: 'Savings', card: 'Credit card' };
@@ -1482,7 +1519,8 @@ function business_(allowed) {
         discount: num_(d['DISCOUNT']), deposit: num_(d['DEPOSIT']), notes: norm_(d['NOTES']), terms: norm_(d['TERMS']),
         subtotal: num_(d['SUBTOTAL']), tax: num_(d['TAX']), total: num_(d['TOTAL']), paid: num_(d['PAID']),
         billed: norm_(d['BILLED']), sentAt: norm_(d['SENT AT']), approvedAt: norm_(d['APPROVED AT']),
-        createdBy: norm_(d['CREATED BY']), created: norm_(d['CREATED']), updated: norm_(d['UPDATED'])
+        createdBy: norm_(d['CREATED BY']), created: norm_(d['CREATED']), updated: norm_(d['UPDATED']),
+        budget: parseBudget_(d['BUDGET'])
       };
     });
   var payments = rows_('Payments').filter(function (p) { return lower_(p['DELETED']) !== 'yes' && norm_(p['ID']); })
@@ -1514,18 +1552,18 @@ function business_(allowed) {
 var PUBLIC = { requestCode: requestCode_, verifyCode: verifyCode_ };
 var BIZ_FNS = { saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1, saveDoc:1, setDocStatus:1,
                 deleteDoc:1, addPayment:1, deletePayment:1, saveExpense:1, deleteExpense:1, getReceipt:1, scanReceipt:1,
-                saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, scanCheck:1, importExpenses:1 };
+                saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, scanCheck:1, importExpenses:1, saveBudget:1 };
 var NEEDS_ID = { addTool:1, moveTool:1, setToolStatus:1, addPart:1, setLowTarget:1,
                  adjustStock:1, transferStock:1, addLocation:1, archiveLocation:1, bulkImport:1,
                  saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1,
                  saveDoc:1, setDocStatus:1, deleteDoc:1, addPayment:1, deletePayment:1,
                  saveExpense:1, deleteExpense:1,
-                 saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, importExpenses:1 };
+                 saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, importExpenses:1, saveBudget:1 };
 
 function handlers_() {
   return {
     bootstrap: function (a, me) { return bootstrap_(a, me); },
-    signOut: signOut_,
+    signOut: signOut_, issueCode: issueCode_,
     addTool: addTool_, moveTool: moveTool_, setToolStatus: setToolStatus_,
     addPart: addPart_, setLowTarget: setLowTarget_,
     adjustStock: adjustStock_, transferStock: transferStock_,
@@ -1537,7 +1575,7 @@ function handlers_() {
     addPayment: addPayment_, deletePayment: deletePayment_,
     saveExpense: saveExpense_, deleteExpense: deleteExpense_, getReceipt: getReceipt_, scanReceipt: scanReceipt_,
     saveBank: saveBank_, saveVendor: saveVendor_, archiveVendor: archiveVendor_, saveBankTx: saveBankTx_, deleteBankTx: deleteBankTx_,
-    setPaymentBank: setPaymentBank_, scanCheck: scanCheck_, importExpenses: importExpenses_
+    setPaymentBank: setPaymentBank_, scanCheck: scanCheck_, importExpenses: importExpenses_, saveBudget: saveBudget_
   };
 }
 
@@ -1560,7 +1598,7 @@ function bizOfCall_(fn, a) {
     case 'saveDoc':
       var d = a.doc || {};
       return rowBiz('Docs', d.id) || rowBiz('Docs', d.parent) || bizKey_(d.business);
-    case 'setDocStatus': case 'deleteDoc': return rowBiz('Docs', a.id);
+    case 'setDocStatus': case 'deleteDoc': case 'saveBudget': return rowBiz('Docs', a.id);
     case 'addPayment': return rowBiz('Docs', a.invoice);
     case 'deletePayment': var p = findBy_('Payments', 'ID', a.id); return p ? rowBiz('Docs', norm_(p['INVOICE'])) : '';
     case 'saveExpense': return rowBiz('Expenses', a.id) || bizKey_(a.business);
