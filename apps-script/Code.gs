@@ -4,7 +4,7 @@
  * Columns are always found by header NAME, never by position.
  */
 
-var VERSION   = '2.7.0';
+var VERSION   = '2.7.1';
 var SHEET_ID  = ''; // leave blank to use the sheet this script is bound to
 var CODE_TTL  = 10 * 60 * 1000;        // 6-digit code lifetime
 var CODE_TRIES= 5;
@@ -1013,17 +1013,31 @@ function parseReceipt_(text) {
 
   var amt = /\$?\s*(\d{1,3}(?:,\d{3})+|\d+)\.(\d{2})(?!\d)/g;
   var amountsIn = function (l) { var a = [], m; amt.lastIndex = 0; while ((m = amt.exec(l))) a.push(Number(m[1].replace(/,/g, '') + '.' + m[2])); return a; };
-  var best = 0;
-  // Prefer the last "total"-type line that isn't subtotal / savings / tax.
+  // Score every money line. Savings/points/tax/change sections never count; what the card was charged counts most.
+  var cands = [], skipUntil = -1;
   for (var k = 0; k < lines.length; k++) {
     var L = lines[k].toLowerCase();
-    if (/(sub\s*-?\s*total|savings|you saved|discount|tax\b|change\b|tip\b|points)/.test(L)) continue;
-    if (/(grand total|total due|amount due|balance due|total\b|amount\b|sale\b|purchase\b|debit\b|credit\b|visa|mastercard)/.test(L)) {
-      var a = amountsIn(lines[k]);
-      if (!a.length && k + 1 < lines.length) a = amountsIn(lines[k + 1]);     // amount on the next line
-      if (a.length && /total|amount|balance/.test(L)) best = a[a.length - 1];
-      else if (a.length && !best) best = a[a.length - 1];
-    }
+    if (/(your savings|you saved|total savings|savings summary|your points|rewards|points earned)/.test(L)) { skipUntil = k + 3; continue; }
+    if (k <= skipUntil) continue;
+    if (/(sub\s*-?\s*total|saving|saved|discount|coupon|tax\b|change\b|tip\b|points|items sold|item count|qty|cash back)/.test(L)) continue;
+    var score = 0;
+    if (/(grand total|total due|amount due|balance due|\bbalance\b|amount owed)/.test(L)) score = 6;
+    else if (/(payment amount|amount paid|total paid|charged|purchase amount|sale amount|approved amount|amount\s*:?\s*\$)/.test(L)) score = 5;
+    else if (/(\bvisa\b|mastercard|master card|amex|discover|debit|credit|card)/.test(L)) score = 4;
+    else if (/\btotal\b/.test(L)) score = 3;
+    else if (/(\bsale\b|\bamount\b)/.test(L)) score = 2;
+    if (!score) continue;
+    var a = amountsIn(lines[k]);
+    if (!a.length && k + 1 < lines.length) a = amountsIn(lines[k + 1]);    // amount on the next line
+    if (a.length && a[a.length - 1] > 0) cands.push({ v: a[a.length - 1], s: score, i: k });
+  }
+  var best = 0;
+  if (cands.length) {
+    var count = {};
+    cands.forEach(function (c) { count[c.v] = (count[c.v] || 0) + 1; });
+    cands.forEach(function (c) { c.t = c.s + (count[c.v] - 1) * 2; });   // the same amount on Balance, Payment and Visa lines is the total
+    cands.sort(function (x, y) { return y.t - x.t || y.v - x.v; });
+    best = cands[0].v;
   }
   if (!best) {                                                              // fall back to the biggest number on the receipt
     var all = amountsIn(t).filter(function (n) { return n > 0 && n < 100000; });
@@ -1043,6 +1057,8 @@ function parseReceipt_(text) {
     if (age > -2 && age < 800) out.date = ds;
   }
 
+  var c4 = t.match(/(?:\*{3,}|x{3,}|card\s*#?\s*:?\s*[*x]+)\s*(\d{4})\b/i);
+  if (c4) out.card = c4[1];
   if (/\b(visa|mastercard|master card|amex|american express|discover|debit|credit|card #|chip|contactless|apple pay|google pay)\b/i.test(t)) out.method = 'Card';
   else if (/\bcash\b/i.test(t)) out.method = 'Cash';
   else if (/\bcheck\b/i.test(t)) out.method = 'Check';
@@ -1107,11 +1123,11 @@ function scanReceipt_(a, me) {
   }
   var file = receiptsFolder_(b, p.date || dstr_(now_())).createFile(blob);
   var out = { fileId: file.getId(), link: file.getUrl(), text: text.slice(0, 3000), read: !!text, duplicates: dups,
-              vendor: p.vendor, date: p.date, total: p.total, account: account, method: p.method };
+              vendor: p.vendor, date: p.date, total: p.total, account: account, method: p.method, card: p.card || '' };
   if (a.createDraft) {
     var id = norm_(a.id) || Utilities.getUuid();
     var rec = { 'ID': id, 'BUSINESS': b, 'STATUS': 'Review', 'DATE': p.date || dstr_(now_()), 'VENDOR': p.vendor,
-      'ACCOUNT': account, 'AMOUNT': p.total, 'METHOD': p.method, 'JOB': '', 'NOTE': '', 'RECEIPT': out.fileId,
+      'ACCOUNT': account, 'AMOUNT': p.total, 'METHOD': p.method, 'JOB': '', 'NOTE': p.card ? 'Card ••' + p.card : '', 'RECEIPT': out.fileId,
       'HASH': hash, 'DUP OF': dups.length ? dups[0].id : '', 'SCANNED': out.text, 'CREATED BY': me.name,
       'CREATED': now_().toISOString(), 'UPDATED': now_().toISOString(), 'DELETED': '' };
     rec['RECEIPT LINK'] = fileReceipt_(out.fileId, b, { 'DATE': rec['DATE'], 'VENDOR': p.vendor, 'AMOUNT': p.total }) || out.link;
