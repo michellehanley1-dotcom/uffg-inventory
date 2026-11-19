@@ -235,6 +235,27 @@ body[data-biz=uribest] .matchbox{background:#E9EEF7;border-color:#C9D5EE}
 label.check{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.88rem;color:var(--ink);margin:-4px 0 12px;font-weight:500}
 label.check input{width:auto;margin:0}
 .link.dep{padding:2px 0 0;font-size:.8rem}
+/* v2.6: budgets */
+.bbar{height:7px;background:var(--cream);border-radius:4px;overflow:hidden;margin:6px 0 2px}
+.bbar i{display:block;height:100%;background:var(--green);border-radius:4px}
+.bbar i.over{background:var(--red)}
+.bvhead{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bvhead b{display:block;font-size:1.25rem}
+.bvhead span{font-size:.72rem;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.bvhead div:last-child{text-align:right}
+.bvrows{margin:10px 0 6px}
+.bvrow{padding:9px 0;border-top:1px solid var(--line);cursor:pointer}
+.bvrow:active{background:var(--cream2)}
+.grid2b{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bline input{margin-bottom:6px}
+.bline .bname{font-weight:600}
+.achips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 6px}
+.achip{border:1px solid var(--line);background:#fff;border-radius:14px;padding:4px 9px;font-size:.72rem;color:var(--mut);cursor:pointer}
+.achip.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+.achip.dim{opacity:.4}
+.achip.more{border-style:dashed;color:var(--green);font-weight:600}
+.bline .brm{padding:4px 0;font-size:.8rem}
+.link.sm.codebtn{padding:2px 0;font-size:.74rem}
 </style>
 </head>
 <body>
@@ -255,6 +276,7 @@ label.check input{width:auto;margin:0}
         <input id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="you@uffgconstruction.com">
       </div>
       <button class="btn wide" id="sendCode">Send code</button>
+      <div class="center"><button class="link" id="haveCode">I already have a code</button></div>
     </div>
     <div id="step2" class="hide">
       <h2>Enter the code</h2>
@@ -419,6 +441,12 @@ function startResendTimer() {
   tick(); resendT = setInterval(tick, 1000);
 }
 $('#resend').onclick = () => { $('#sendCode').click(); };
+$('#haveCode').onclick = () => {
+  const email = $('#email').value.trim().toLowerCase();
+  if (!email) return authErr('Enter your email first.');
+  authErr(''); $('#sentTo').textContent = 'Type the code for ' + email + '.';
+  $('#step1').classList.add('hide'); $('#step2').classList.remove('hide'); $('#code').focus();
+};
 $('#back').onclick = () => { $('#step2').classList.add('hide'); $('#step1').classList.remove('hide'); authErr(''); };
 
 $('#verify').onclick = async () => {
@@ -582,10 +610,10 @@ function render() {
     customers: vCustomers, estimates: v => vDocList(v, 'estimate'), invoices: v => vDocList(v, 'invoice'), expenses: vExpenses,
     inventory: vInventory, more: vMore,
     customer: vCustomer, doc: vDoc, services: vServices, company: vCompany, pnl: vPnl,
-    banks: vBanks, bank: vBank, vendors: vVendors, balance: vBalance
+    banks: vBanks, bank: vBank, vendors: vVendors, balance: vBalance, budget: vBudget, budgets: vBudgets
   };
   const titles = { customer: 'Customer', services: 'Services & pricing', company: 'Company info', pnl: 'Profit & loss',
-    banks: 'Bank & cards', bank: (bankById(r.id) || {}).name || 'Account', vendors: 'Vendors & subs', balance: 'Balance sheet' };
+    banks: 'Bank & cards', bank: (bankById(r.id) || {}).name || 'Account', vendors: 'Vendors & subs', balance: 'Balance sheet', budget: 'Job budget', budgets: 'Job budgets' };
   $('#viewTitle').textContent = (r.view === 'doc' ? docLabel(EDIT) : (titles[r.view] || TAB_LABEL[r.view] || r.view)).toUpperCase();
   (views[r.view] || vInventory)(wrap, r.id);
 }
@@ -905,6 +933,7 @@ function vMore(v) {
   if (isMgr()) {
     v.appendChild(el('h2', null, BIZ_NAMES[BIZ] + ' business'));
     [['Profit & loss', 'Income, job costs, overhead, profit by project', 'pnl'],
+     ['Job budgets', 'Budget vs actual for every job', 'budgets'],
      ['Balance sheet', 'Cash, what customers owe, what the business owes', 'balance'],
      ['Bank & cards', banksOf().length ? banksOf().map(bankLabel).join(' · ') : 'Checks, deposits, running balance', 'banks'],
      ['Vendors & subcontractors', 'Who you pay, and how much this year', 'vendors'],
@@ -944,17 +973,27 @@ function vMore(v) {
     (DATA.team || []).forEach(t => {
       const isMe = t.email === me().email, isActing = VIEWAS && t.email === VIEWAS;
       const only = t.businesses && t.businesses.length === 1 ? BIZ_NAMES[t.businesses[0]] + ' only' : '';
+      const codeBtn = isMe ? '' : `<button class="link sm codebtn" type="button">Sign-in code</button>`;
       const c = el('div', 'card' + (isMe ? '' : ' tap') + (isActing ? ' acting' : ''));
       c.innerHTML = `<div class="row"><div class="grow"><div class="ttl">${esc(t.name)}${isMe ? ' <span class="meta">(you)</span>' : ''}</div>
         <div class="meta">${esc([t.email, t.base, only].filter(Boolean).join(' · '))}</div></div>
-        <span class="pill">${esc(isActing ? 'Viewing' : t.role)}</span></div>`;
+        <div class="rcol"><span class="pill">${esc(isActing ? 'Viewing' : t.role)}</span>${codeBtn}</div></div>`;
+      if (!isMe) c.querySelector('.codebtn').onclick = async e => {
+        e.stopPropagation(); const b = e.target; b.disabled = true; b.textContent = '…';
+        try {
+          const r = await call('issueCode', { email: t.email });
+          const f = el('div'); f.innerHTML = `<div class="lg" style="margin:8px 0 6px">${esc(r.code)}</div><p class="sub center">Give this to ${esc(t.name)}. On the sign-in screen they enter ${esc(t.email)}, tap “I already have a code”, then type this. It works for 10 minutes.</p>`;
+          openSheet('Sign-in code for ' + t.name, f);
+        } catch (err) { toast(err.message, true); }
+        b.disabled = false; b.textContent = 'Sign-in code';
+      };
       if (!isMe) c.onclick = () => {
         VIEWAS = isActing ? '' : t.email; ROUTES = []; VIEW = ''; DATA.biz = null;
         toast(VIEWAS ? 'Now viewing & submitting as ' + t.name : 'Back to you'); refresh();
       };
       v.appendChild(c);
     });
-    v.appendChild(el('div', 'sub', 'Tap a person to see the app exactly as they do. Anything you save while viewing is recorded under their name. Add or remove people on the Team tab of the sheet (Role: Manager or Lead; Businesses: blank for both, or "Uribest").'));
+    v.appendChild(el('div', 'sub', 'If someone’s code email doesn’t arrive, tap “Sign-in code” next to their name and give them the code. Tap a person to see the app exactly as they do. Anything you save while viewing is recorded under their name. Add or remove people on the Team tab of the sheet (Role: Manager or Lead; Businesses: blank for both, or "Uribest").'));
 
     const imp = el('button', 'btn ghost wide', 'Import a list');
     imp.style.margin = '6px 0 20px';
@@ -1310,6 +1349,16 @@ function openDoc(id) {
 
 /* Leaving a page with unsaved edits asks first. Returns true if it's fine to leave now. */
 function leaveDocOk(retry) {
+  if (route().view === 'budget' && BDIRTY) {
+    const b = el('div');
+    b.innerHTML = `<p class="sub" style="margin:6px 0 14px">This budget has changes that aren't saved.</p>`;
+    const acts = el('div', 'actions');
+    acts.appendChild(btn('Save budget', () => { closeSheet(); saveBudget(retry); }));
+    acts.appendChild(btn('Discard changes', () => { closeSheet(); BDIRTY = false; BEDIT = null; retry(); }, 'ghost'));
+    acts.appendChild(btn('Keep editing', closeSheet, 'ghost'));
+    b.appendChild(acts); openSheet('Save budget?', b);
+    return false;
+  }
   if (route().view !== 'doc' || !DIRTY) return true;
   const b = el('div');
   b.innerHTML = `<p class="sub" style="margin:6px 0 14px">You have changes that aren't saved.</p>`;
@@ -1329,6 +1378,7 @@ function saveEdit(silent) {
   Object.assign(EDIT, t);
   const billFrom = EDIT._billFrom;
   const stored = clone(EDIT); delete stored._new; delete stored._billFrom;
+  const prevDoc = docById(EDIT.id); if (prevDoc && prevDoc.budget) stored.budget = prevDoc.budget;   // the budget is edited on its own page
   upsertLocal(biz().docs, stored);
   (billFrom || []).forEach(id => { const s = docById(id); if (s) s.billed = EDIT.id; });
   saveLocal();
@@ -2113,6 +2163,7 @@ async function exportExpensesCsv(list) {
 
 /* Shown inside an estimate or invoice: what the job cost and what's left. */
 function jobCostsSection(v, d) {
+  if (budgetSection(v, d)) return;
   const xs = jobExpenses(d).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const key = jobKeyOf(d), est = docById(key);
   const revenue = est && est.type === 'estimate' ? contractTotal(est) : totals(d).total;
@@ -2129,10 +2180,247 @@ function jobCostsSection(v, d) {
     c.appendChild(r);
   });
   if (xs.length > 6) c.appendChild(el('div', 'meta', '+ ' + (xs.length - 6) + ' more in Expenses'));
-  const add = btn('+ Add expense to this project', () => expenseSheet(null, key), 'ghost');
-  add.classList.add('wide'); add.style.marginTop = '10px';
-  c.appendChild(add);
+  const g2 = el('div', 'grid2'); g2.style.marginTop = '10px';
+  g2.appendChild(btn('+ Add expense', () => expenseSheet(null, key), 'ghost'));
+  g2.appendChild(btn('Set a budget', () => go('budget', jobDoc(d).id), 'ghost'));
+  c.appendChild(g2);
   v.appendChild(c);
+}
+
+/* ===================== job budgets vs actuals (v2.6) ===================== */
+/* A budget lives on the job (the estimate, or an invoice that didn't come from one).
+   Each line is a category with an amount and the accounts whose expenses count toward it. */
+const BUDGET_TEMPLATE = [
+  ['Labor', ['Job labor', 'Subcontractors'], 'crew × day rate × days'], ['Materials', ['Job materials']],
+  ['Hotel / housing', ['Job travel & lodging']], ['Food', ['Meals']], ['Gas', ['Fuel']],
+  ['Drill bits & misc tools', ['Job supplies & small tools']], ['Equipment', ['Tools & small equipment', 'Equipment rental']],
+  ['Insurance', ['Insurance']], ['Truck wear & tear', ['Vehicle repairs & maintenance']],
+  ['Permits', ['Permits & inspections']], ['Dump fees', ['Dump & disposal']]
+].map(([name, accounts, note]) => ({ name, amount: 0, accounts, note: note || '' }));
+
+const jobDoc = d => docById(jobKeyOf(d)) || d;
+const budgetOf = job => (job && Array.isArray(job.budget)) ? job.budget : [];
+function jobRevenue(job) { return job.type === 'estimate' ? contractTotal(job) : totals(job).total; }
+
+/* "4 x 350 x 10" or "1,700" → number. Only digits and + - * / x ( ) allowed. */
+function calcAmount(s) {
+  const t = String(s == null ? '' : s).replace(/[$,\s]/g, '').replace(/[x×]/gi, '*');
+  if (!t) return 0;
+  if (!/^[\d.+\-*/()]+$/.test(t)) return NaN;
+  try { const n = Function('"use strict";return (' + t + ')')(); return isFinite(n) ? r2(n) : NaN; } catch (e) { return NaN; }
+}
+
+function budgetData(job) {
+  const lines = budgetOf(job), xs = jobExpenses(job), used = new Set();
+  const rows = lines.map(l => {
+    (l.accounts || []).forEach(a => used.add(a));
+    const mine = xs.filter(x => (l.accounts || []).includes(x.account));
+    const actual = sum(mine);
+    return { name: l.name, note: l.note, accounts: l.accounts || [], budget: r2(l.amount), actual, left: r2(l.amount - actual), xs: mine };
+  });
+  const other = xs.filter(x => !used.has(x.account));
+  for (let i = rows.length - 1; i >= 0; i--) if (!rows[i].budget && !rows[i].actual) rows.splice(i, 1);   // empty template lines
+  if (other.length) rows.push({ name: 'Not in the budget', note: [...new Set(other.map(x => acctOf(x.account).name))].join(', '), accounts: [], budget: 0, actual: sum(other), left: -sum(other), xs: other, other: true });
+  const tB = r2(rows.reduce((s, r) => s + r.budget, 0)), tA = r2(rows.reduce((s, r) => s + r.actual, 0));
+  const rev = jobRevenue(job);
+  return { rows, tB, tA, left: r2(tB - tA), rev, profitB: r2(rev - tB), profitA: r2(rev - tA), count: xs.length };
+}
+const pctOf = (a, b) => b ? Math.round(a / b * 100) : 0;
+function barHtml(actual, budget) {
+  const over = budget ? actual > budget : actual > 0, w = budget ? Math.min(100, actual / budget * 100) : (actual ? 100 : 0);
+  return `<div class="bbar"><i class="${over ? 'over' : ''}" style="width:${Math.max(actual ? 3 : 0, w)}%"></i></div>`;
+}
+
+/* Shown on the estimate / invoice: budget vs actual if there is a budget, plain job costs if not. */
+function budgetSection(v, d) {
+  const job = jobDoc(d), lines = budgetOf(job);
+  if (!lines.length) return false;
+  const b = budgetData(job);
+  v.appendChild(el('h2', null, 'Budget vs actual'));
+  const c = el('div', 'card bva');
+  c.innerHTML = `<div class="bvhead"><div><b>${money(b.tA)}</b><span>spent of ${money(b.tB)}</span></div>
+      <div class="${b.left < 0 ? 'negtext' : ''}"><b>${money(Math.abs(b.left))}</b><span>${b.left < 0 ? 'over budget' : 'left'}</span></div></div>
+    ${barHtml(b.tA, b.tB)}
+    <div class="bvrows">${b.rows.map((r, i) => `<div class="bvrow tap" data-i="${i}">
+      <div class="row"><div class="grow"><div class="ttl">${esc(r.name)}</div>${r.note ? `<div class="meta">${esc(r.note)}</div>` : ''}</div>
+      <div class="rcol"><div class="amt ${r.left < 0 ? 'negtext' : ''}">${money(r.actual)}</div><div class="meta">${r.other ? 'unbudgeted' : 'of ' + money(r.budget)}</div></div></div>
+      ${r.other ? '' : barHtml(r.actual, r.budget)}</div>`).join('')}</div>
+    <div class="trow"><span>${job.type === 'estimate' ? 'Contract' : 'Invoice'} total</span><span>${money(b.rev)}</span></div>
+    <div class="trow"><span>Profit if on budget</span><span>${money(b.profitB)}${b.rev ? ' · ' + pctOf(b.profitB, b.rev) + '%' : ''}</span></div>
+    <div class="trow big ${b.profitA < 0 ? 'neg' : ''}"><span>Profit so far</span><span>${money(b.profitA)}${b.rev ? ' · ' + pctOf(b.profitA, b.rev) + '%' : ''}</span></div>`;
+  c.querySelectorAll('.bvrow').forEach(n => n.onclick = () => budgetLineSheet(job, b.rows[+n.dataset.i]));
+  const g = el('div', 'grid3'); g.style.marginTop = '10px';
+  g.appendChild(btn('Edit budget', () => go('budget', job.id), 'ghost sm'));
+  g.appendChild(btn('+ Expense', () => expenseSheet(null, job.id), 'ghost sm'));
+  g.appendChild(btn('PDF', () => shareBudgetPdf(job), 'ghost sm'));
+  c.appendChild(g);
+  v.appendChild(c);
+  return true;
+}
+function budgetLineSheet(job, r) {
+  const f = el('div');
+  f.innerHTML = `<div class="trow"><span>Budget</span><span>${money(r.budget)}</span></div><div class="trow"><span>Spent</span><span>${money(r.actual)}</span></div>
+    <div class="trow big ${r.left < 0 ? 'neg' : ''}"><span>${r.left < 0 ? 'Over' : 'Left'}</span><span>${money(Math.abs(r.left))}</span></div>
+    ${r.accounts.length ? `<div class="meta" style="margin:8px 0">Counts: ${esc(r.accounts.map(acctLabel).join(', '))}</div>` : ''}`;
+  if (!r.xs.length) f.appendChild(el('div', 'empty sm', 'Nothing booked here yet.'));
+  r.xs.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach(x => {
+    const row = el('div', 'row line'); row.style.cursor = 'pointer';
+    row.innerHTML = `<div class="grow"><div class="ttl" style="font-weight:500">${esc(x.vendor || 'Expense')}${x.receipt ? ' 📎' : ''}</div><div class="meta">${esc(fmtDate(x.date) + ' · ' + acctOf(x.account).name)}</div></div><div class="amt">${money(x.amount)}</div>`;
+    row.onclick = () => expenseSheet(x);
+    f.appendChild(row);
+  });
+  openSheet(r.name + ' · ' + (job.number || ''), f);
+}
+
+/* ---- budget editor ---- */
+let BEDIT = null, BDIRTY = false;
+function vBudget(v, id) {
+  const job = docById(id);
+  if (!job) { v.appendChild(el('div', 'empty', 'Project not found.')); return; }
+  if (!BEDIT || BEDIT.id !== id) { BEDIT = { id, lines: clone(budgetOf(job)) }; BDIRTY = false; }
+  const rev = jobRevenue(job);
+  v.appendChild(card(`<div class="kicker">${esc(BIZ_NAMES[job.business || 'uffg'])} · budget</div><div class="ttl">${esc(jobLabel(job.id))}</div>
+    <div class="meta">${esc(custName(job.customer))} · ${job.type === 'estimate' ? 'contract' : 'invoice'} ${money(rev)}</div>`));
+  if (!BEDIT.lines.length) {
+    v.appendChild(el('div', 'sub', 'Start from the usual job categories, or copy another job’s budget.'));
+    const g = el('div', 'grid2'); g.style.marginBottom = '12px';
+    g.appendChild(btn('Use job categories', () => { BEDIT.lines = clone(BUDGET_TEMPLATE); BDIRTY = true; render(); }));
+    const others = jobOptions().filter(j => j.id !== id && budgetOf(j).length);
+    g.appendChild(btn('Copy from a job', () => {
+      if (!others.length) return toast('No other job has a budget yet.', true);
+      const f = el('div');
+      others.forEach(j => f.appendChild(card(`<div class="ttl">${esc(jobLabel(j.id))}</div><div class="meta">${money(budgetOf(j).reduce((s, l) => s + (Number(l.amount) || 0), 0))} budget</div>`,
+        () => { BEDIT.lines = clone(budgetOf(j)); BDIRTY = true; closeSheet(); render(); })));
+      openSheet('Copy budget from', f);
+    }, 'ghost'));
+    v.appendChild(g);
+  }
+  const taken = () => { const m = {}; BEDIT.lines.forEach((l, i) => (l.accounts || []).forEach(a => m[a] = i)); return m; };
+  const list = el('div'); v.appendChild(list);
+  const tot = el('div', 'card');
+  function paintTotals() {
+    const tB = r2(BEDIT.lines.reduce((s, l) => s + (Number(l.amount) || 0), 0)), p = r2(rev - tB);
+    tot.innerHTML = `<div class="trow big"><span>Budget total</span><span>${money(tB)}</span></div>
+      <div class="trow"><span>${job.type === 'estimate' ? 'Contract' : 'Invoice'}</span><span>${money(rev)}</span></div>
+      <div class="trow big ${p < 0 ? 'neg' : ''}"><span>Planned profit${rev ? ' · ' + pctOf(p, rev) + '%' : ''}</span><span>${money(p)}</span></div>
+      ${tB ? `<div class="meta">Contract is ${Math.round(rev / tB * 100 - 100)}% over budgeted cost.</div>` : ''}`;
+  }
+  function paint() {
+    list.innerHTML = '';
+    const tk = taken();
+    BEDIT.lines.forEach((l, i) => {
+      const c = el('div', 'card bline');
+      c.innerHTML = `<div class="grid2b"><input class="bname" value="${esc(l.name)}" placeholder="Category">
+          <input class="bamt money" inputmode="decimal" value="${l.expr ? esc(l.expr) : (l.amount || '')}" placeholder="$0"></div>
+        <div class="hint bcalc">${l.expr && isFinite(calcAmount(l.expr)) && /[*x×+\-/]/i.test(l.expr) ? '= ' + money(calcAmount(l.expr)) : (/labor|crew/i.test(l.name || '') && !l.amount ? 'Tip: type 4 x 350 x 10 for crew × rate × days' : '')}</div>
+        <input class="bnote" value="${esc(l.note || '')}" placeholder="Note (optional)">
+        <div class="achips">${(l._open ? accounts() : accounts().filter(a => (l.accounts || []).includes(a.name))).map(a => {
+          const on = (l.accounts || []).includes(a.name), other = tk[a.name] !== undefined && tk[a.name] !== i;
+          return `<button type="button" class="achip ${on ? 'on' : ''} ${other ? 'dim' : ''}" data-a="${esc(a.name)}" ${other ? 'title="Used by another line"' : ''}>${esc(a.code + ' ' + a.name)}</button>`; }).join('')}
+          <button type="button" class="achip more">${l._open ? 'Done' : ((l.accounts || []).length ? 'Change accounts' : '+ Pick accounts')}</button></div>
+        <button type="button" class="link dangertext brm">Remove line</button>`;
+      const amt = c.querySelector('.bamt'), calc = c.querySelector('.bcalc');
+      c.querySelector('.bname').oninput = e => { l.name = e.target.value; BDIRTY = true; };
+      c.querySelector('.bnote').oninput = e => { l.note = e.target.value; BDIRTY = true; };
+      amt.oninput = () => {
+        const n = calcAmount(amt.value); l.expr = amt.value; BDIRTY = true;
+        if (isNaN(n)) { calc.textContent = 'Use numbers and x, +, −'; return; }
+        l.amount = n; calc.textContent = /[*x×+\-/]/i.test(amt.value) ? '= ' + money(n) : '';
+        if (/[*x×]/i.test(amt.value) && (!l.note || /crew × day rate × days$/.test(l.note))) {
+          l.note = amt.value.trim().replace(/\s*[x×*]\s*/gi, ' × ') + (/crew × day rate × days$/.test(l.note || '') ? ' (crew × day rate × days)' : '');
+          c.querySelector('.bnote').value = l.note;
+        }
+        paintTotals();
+      };
+      c.querySelector('.achip.more').onclick = () => { l._open = !l._open; paint(); };
+      c.querySelectorAll('.achip[data-a]').forEach(b => b.onclick = () => {
+        const a = b.dataset.a, cur = taken();
+        if (cur[a] !== undefined && cur[a] !== i) { const o = BEDIT.lines[cur[a]]; o.accounts = o.accounts.filter(x => x !== a); }
+        l.accounts = (l.accounts || []).includes(a) ? l.accounts.filter(x => x !== a) : (l.accounts || []).concat(a);
+        BDIRTY = true; paint();
+      });
+      c.querySelector('.brm').onclick = () => { BEDIT.lines.splice(i, 1); BDIRTY = true; paint(); paintTotals(); };
+      list.appendChild(c);
+    });
+  }
+  paint();
+  const add = btn('+ Add a line', () => { BEDIT.lines.push({ name: '', amount: 0, accounts: [], note: '' }); BDIRTY = true; paint(); }, 'ghost');
+  add.classList.add('wide'); add.style.marginBottom = '10px';
+  v.appendChild(add);
+  v.appendChild(tot); paintTotals();
+  v.appendChild(el('div', 'sub', 'Expenses booked to this job count toward the line that has their account. Anything else shows as “Not in the budget”.'));
+  const save = btn('Save budget', () => saveBudget(), ''); save.classList.add('wide');
+  v.appendChild(save);
+}
+function saveBudget(after) {
+  const job = docById(BEDIT.id); if (!job) return;
+  const bad = BEDIT.lines.find(l => isNaN(calcAmount(l.expr != null && l.expr !== '' ? l.expr : l.amount)));
+  if (bad) return toast('Fix the amount on “' + (bad.name || 'a line') + '”.', true);
+  const lines = BEDIT.lines.map(l => ({ name: (l.name || '').trim(), amount: r2(l.amount), accounts: l.accounts || [], note: (l.note || '').trim() }))
+    .filter(l => l.name || l.amount || l.accounts.length);
+  if (lines.some(l => !l.name)) return toast('Give every line a name.', true);
+  job.budget = lines; saveLocal();
+  enqueue('saveBudget', { id: job.id, budget: lines }, 'Budget ' + (job.number || ''));
+  BDIRTY = false; BEDIT = null; toast('Budget saved');
+  if (after) after(); else back();
+}
+
+/* ---- every job's budget at a glance ---- */
+function vBudgets(v) {
+  const jobs = jobOptions().filter(j => budgetOf(j).length || jobExpenses(j).length);
+  v.appendChild(el('div', 'sub', 'Approved and open jobs. Tap one to see each category.'));
+  if (!jobs.length) v.appendChild(el('div', 'empty', 'No jobs with a budget or expenses yet. Open an estimate and tap “Set a budget”.'));
+  jobs.forEach(j => {
+    const b = budgetData(j), has = budgetOf(j).length;
+    v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">${esc(jobLabel(j.id))}</div>
+        <div class="meta">${esc(custName(j.customer))} · ${money(b.rev)}</div></div>
+        <div class="rcol"><div class="amt ${has && b.left < 0 ? 'negtext' : ''}">${money(b.tA)}</div><div class="meta">${has ? 'of ' + money(b.tB) + ' · ' + pctOf(b.tA, b.tB) + '%' : 'no budget'}</div></div></div>
+        ${has ? barHtml(b.tA, b.tB) : ''}`, () => openDoc(j.id)));
+  });
+}
+
+/* ---- PDF, laid out like Ricardo's sheet ---- */
+function buildBudgetPdf(job) {
+  const b = budgetData(job), bk = job.business || 'uffg', co = companyOf(bk), isUB = bk === 'uribest';
+  const C = hexRgb(co.color, isUB ? [31, 79, 180] : [46, 107, 79]), MUT = [110, 116, 124], LINE = [222, 216, 205], RED = [163, 58, 40];
+  const P = new PdfDoc(), M = 54, R = 612 - M;
+  let y = 792 - 54;
+  if (isUB) { P.wordmark(M, y - 22, 22, C); y -= 40; } else { P.logo(M, y - 46, 46, C); y -= 4; }
+  P.text(isUB ? M : M + 58, isUB ? y : y - 16, co.name || BIZ_NAMES[bk], { size: 12, bold: true });
+  y -= isUB ? 30 : 64;
+  P.text(306, y, 'Job Budget vs Actual', { size: 19, bold: true, color: C, align: 'center' }); y -= 16;
+  P.text(306, y, (jobLabel(job.id) + ' - ' + custName(job.customer)).slice(0, 90), { size: 10, align: 'center' }); y -= 13;
+  P.text(306, y, 'As of ' + fmtDate(today()), { size: 9, color: MUT, align: 'center' }); y -= 26;
+  const cB = 360, cA = 440, cV = R;
+  P.rect(M, y - 6, R - M, 20, C);
+  const w = { size: 9, bold: true, color: [255, 255, 255] };
+  P.text(M + 6, y, 'CATEGORY', w); P.text(cB, y, 'BUDGET', Object.assign({ align: 'right' }, w)); P.text(cA, y, 'ACTUAL', Object.assign({ align: 'right' }, w)); P.text(cV - 6, y, 'LEFT / (OVER)', Object.assign({ align: 'right' }, w));
+  y -= 22;
+  const vstr = n => n < 0 ? '(' + money(-n) + ')' : money(n);
+  b.rows.forEach(r => {
+    if (y < 120) { P.addPage(); y = 792 - 54; }
+    P.text(M + 6, y, r.name, { size: 10, bold: true });
+    P.text(cB, y, r.other ? '-' : money(r.budget), { size: 10, align: 'right' });
+    P.text(cA, y, money(r.actual), { size: 10, align: 'right' });
+    P.text(cV - 6, y, vstr(r.left), { size: 10, bold: r.left < 0, color: r.left < 0 ? RED : [21, 24, 28], align: 'right' });
+    if (r.note) { y -= 11; P.text(M + 6, y, r.note.slice(0, 70), { size: 8, color: MUT }); }
+    y -= 8; P.line(M, y, R, y, LINE, 0.5); y -= 13;
+  });
+  P.rect(M, y - 6, R - M, 20, C);
+  const wb = { size: 10, bold: true, color: [255, 255, 255] };
+  P.text(M + 6, y, 'Total expenses', wb); P.text(cB, y, money(b.tB), Object.assign({ align: 'right' }, wb)); P.text(cA, y, money(b.tA), Object.assign({ align: 'right' }, wb)); P.text(cV - 6, y, vstr(b.left), Object.assign({ align: 'right' }, wb));
+  y -= 36;
+  P.text(M, y, 'PROFIT', { size: 8, bold: true, color: C }); P.text(cB, y, 'BUDGET', { size: 8, bold: true, color: C, align: 'right' }); P.text(cA, y, 'ACTUAL', { size: 8, bold: true, color: C, align: 'right' }); y -= 16;
+  [['Contract amount', b.rev, b.rev], ['Less: total expenses', b.tB, b.tA], ['Profit', b.profitB, b.profitA]].forEach(([k, x1, x2], i) => {
+    P.text(M + 6, y, k, { size: 10, bold: i === 2 }); P.text(cB, y, money(x1), { size: 10, bold: i === 2, align: 'right' }); P.text(cA, y, money(x2), { size: 10, bold: i === 2, align: 'right' }); y -= 15;
+  });
+  if (b.rev) { P.text(M + 6, y, 'Margin', { size: 10 }); P.text(cB, y, pctOf(b.profitB, b.rev) + '%', { size: 10, align: 'right' }); P.text(cA, y, pctOf(b.profitA, b.rev) + '%', { size: 10, align: 'right' }); }
+  P.pages.forEach(ops => { P.ops = ops; P.text(306, 30, 'Prepared ' + fmtDate(today()) + ' from the ' + (co.name || '') + ' app. Actuals are expenses booked to this job.', { size: 7.5, color: MUT, align: 'center' }); });
+  return P.bytes();
+}
+async function shareBudgetPdf(job) {
+  const bytes = buildBudgetPdf(job); window.__lastBudgetPdf = bytes;
+  await shareOrDownload(new Blob([bytes], { type: 'application/pdf' }), ('Budget vs actual - ' + jobLabel(job.id)).replace(/[\\/:*?"<>|]+/g, '') + '.pdf', 'application/pdf');
 }
 
 /* ===================== profit & loss ===================== */
