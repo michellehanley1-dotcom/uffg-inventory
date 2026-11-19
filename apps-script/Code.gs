@@ -4,7 +4,7 @@
  * Columns are always found by header NAME, never by position.
  */
 
-var VERSION   = '2.3.0';
+var VERSION   = '2.4.0';
 var SHEET_ID  = ''; // leave blank to use the sheet this script is bound to
 var CODE_TTL  = 10 * 60 * 1000;        // 6-digit code lifetime
 var CODE_TRIES= 5;
@@ -13,7 +13,7 @@ var SESS_DAYS = 120;
 var BRAND     = 'UFFG Construction';
 
 var TABS = {
-  Team:      ['EMAIL','NAME','TRUCK/LOCATION','ROLE'],
+  Team:      ['EMAIL','NAME','TRUCK/LOCATION','ROLE','BUSINESSES'],
   Locations: ['NAME','TYPE','ACTIVE'],
   Tools:     ['TOOL ID','NAME','BRAND','MODEL','STATUS','LOCATION','CHECKED OUT BY','CHECKED OUT AT','NOTES','UPDATED AT'],
   Parts:     ['PART','BRAND','UNIT','LOW TARGET'],
@@ -135,6 +135,22 @@ function now_()  { return new Date(); }
 
 /* ------------------------------------------------------------------- auth */
 
+/** Team tab BUSINESSES column: blank = both; otherwise "Uribest", "UFFG", or "UFFG, Uribest". */
+function allowedBiz_(v) {
+  var l = lower_(v), out = [];
+  if (l.indexOf('uffg') >= 0) out.push('uffg');
+  if (l.indexOf('uribest') >= 0) out.push('uribest');
+  return out.length ? out : ['uffg', 'uribest'];
+}
+
+/** Add any header a newer version expects to a tab that already exists (e.g. BUSINESSES on Team). */
+function ensureHeaders_(name) {
+  var sh = tab_(name), h = headers_(sh), add = TABS[name].filter(function (c) { return h[c] === undefined; });
+  if (!add.length) return;
+  var col = sh.getLastColumn() + 1;
+  sh.getRange(1, col, 1, add.length).setValues([add]).setFontWeight('bold');
+}
+
 function teamMember_(email) {
   var e = lower_(email);
   var t = rows_('Team');
@@ -145,7 +161,8 @@ function teamMember_(email) {
         name:     norm_(t[i]['NAME']) || lower_(t[i]['EMAIL']),
         base:     norm_(t[i]['TRUCK/LOCATION']),
         role:     norm_(t[i]['ROLE']) || 'Lead',
-        isManager: lower_(t[i]['ROLE']) === 'manager'
+        isManager: lower_(t[i]['ROLE']) === 'manager',
+        businesses: allowedBiz_(t[i]['BUSINESSES'])
       };
     }
   }
@@ -306,7 +323,7 @@ function bootstrap_(args, me) {
 
   var team = rows_('Team').map(function (t) {
     return { email: lower_(t['EMAIL']), name: norm_(t['NAME']) || lower_(t['EMAIL']),
-             base: norm_(t['TRUCK/LOCATION']), role: norm_(t['ROLE']) || 'Lead' };
+             base: norm_(t['TRUCK/LOCATION']), role: norm_(t['ROLE']) || 'Lead', businesses: allowedBiz_(t['BUSINESSES']) };
   });
 
   var log = rows_('Log').slice(-120).reverse().map(function (l) {
@@ -320,7 +337,7 @@ function bootstrap_(args, me) {
     locations: locs, tools: tools, parts: parts, stock: stock, log: log,
     statuses: STATUSES, serverTime: now_().toISOString()
   };
-  if (me.isManager) out.biz = business_();
+  if (me.isManager && acting.isManager) out.biz = business_(acting.businesses);
   return out;
 }
 
@@ -1136,6 +1153,7 @@ function getReceipt_(a, me) {
 
 /** Run once from the editor after updating, so Google asks for Drive permission (for receipt photos). */
 function authorizeDrive() {
+  ensureHeaders_('Team');
   var f = receiptsFolder_();
   Logger.log('Receipts folder ready: ' + f.getName());
   if (typeof Drive !== 'undefined') Logger.log('Receipt reading is on.');
@@ -1145,7 +1163,9 @@ function authorizeDrive() {
 
 /* ---- read ---- */
 
-function business_() {
+function business_(allowed) {
+  allowed = allowed || ['uffg', 'uribest'];
+  var ok = function (o) { return allowed.indexOf(o.business) >= 0; };
   var customers = rows_('Customers').filter(function (c) { return lower_(c['ACTIVE']) !== 'no' && norm_(c['ID']); })
     .map(function (c) {
       return { id: norm_(c['ID']), business: bizKey_(c['BUSINESS']), name: norm_(c['NAME']), company: norm_(c['COMPANY']), phone: norm_(c['PHONE']),
@@ -1175,15 +1195,22 @@ function business_() {
       return { id: norm_(p['ID']), invoice: norm_(p['INVOICE']), date: dstr_(p['DATE']), amount: num_(p['AMOUNT']),
                method: norm_(p['METHOD']), note: norm_(p['NOTE']), who: norm_(p['WHO']) };
     });
-  var expenses = rows_('Expenses').filter(function (x) { return lower_(x['DELETED']) !== 'yes' && norm_(x['ID']); }).map(expenseOut_);
+  customers = customers.filter(ok); services = services.filter(ok); docs = docs.filter(ok);
+  var docIds = {}; docs.forEach(function (d) { docIds[d.id] = 1; });
+  payments = payments.filter(function (p) { return docIds[p.invoice]; });
+  var expenses = rows_('Expenses').filter(function (x) { return lower_(x['DELETED']) !== 'yes' && norm_(x['ID']); }).map(expenseOut_).filter(ok);
   expenses.forEach(function (x) { if (x.dupOf === 'CLEARED') x.dupOf = ''; });
-  return { company: company_(), customers: customers, services: services, docs: docs, payments: payments,
+  var co = company_(), coOut = {};
+  allowed.forEach(function (b) { coOut[b] = co[b]; });
+  return { company: coOut, businesses: allowed, customers: customers, services: services, docs: docs, payments: payments,
            expenses: expenses, accounts: ACCOUNTS };
 }
 
 /* --------------------------------------------------------------- routing */
 
 var PUBLIC = { requestCode: requestCode_, verifyCode: verifyCode_ };
+var BIZ_FNS = { saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1, saveDoc:1, setDocStatus:1,
+                deleteDoc:1, addPayment:1, deletePayment:1, saveExpense:1, deleteExpense:1, getReceipt:1, scanReceipt:1 };
 var NEEDS_ID = { addTool:1, moveTool:1, setToolStatus:1, addPart:1, setLowTarget:1,
                  adjustStock:1, transferStock:1, addLocation:1, archiveLocation:1, bulkImport:1,
                  saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1,
@@ -1205,6 +1232,28 @@ function handlers_() {
     addPayment: addPayment_, deletePayment: deletePayment_,
     saveExpense: saveExpense_, deleteExpense: deleteExpense_, getReceipt: getReceipt_, scanReceipt: scanReceipt_
   };
+}
+
+/** Which business a call touches — taken from the saved record when there is one, so it can't be spoofed. */
+function bizOfCall_(fn, a) {
+  a = a || {};
+  var rowBiz = function (tab, id) { var r = id ? findBy_(tab, 'ID', id) : null; return r ? bizKey_(r['BUSINESS']) : ''; };
+  switch (fn) {
+    case 'saveCompany': case 'scanReceipt': return bizKey_(a.business);
+    case 'saveCustomer': return rowBiz('Customers', a.id) || bizKey_(a.business);
+    case 'archiveCustomer': return rowBiz('Customers', a.id);
+    case 'saveService': return rowBiz('Services', a.id) || bizKey_(a.business);
+    case 'archiveService': return rowBiz('Services', a.id);
+    case 'saveDoc':
+      var d = a.doc || {};
+      return rowBiz('Docs', d.id) || rowBiz('Docs', d.parent) || bizKey_(d.business);
+    case 'setDocStatus': case 'deleteDoc': return rowBiz('Docs', a.id);
+    case 'addPayment': return rowBiz('Docs', a.invoice);
+    case 'deletePayment': var p = findBy_('Payments', 'ID', a.id); return p ? rowBiz('Docs', norm_(p['INVOICE'])) : '';
+    case 'saveExpense': return rowBiz('Expenses', a.id) || bizKey_(a.business);
+    case 'deleteExpense': case 'getReceipt': return rowBiz('Expenses', a.id);
+  }
+  return '';
 }
 
 function json_(obj) {
@@ -1246,17 +1295,27 @@ function doPost(e) {
       if (other) acting = other;
     }
 
+    // Money screens run as the person being viewed: their businesses, their name on what gets saved.
+    // Only a real manager can view as someone else, and only a manager-level person can touch money.
+    var who = me;
+    if (BIZ_FNS[fn]) {
+      who = acting === me ? me : { email: acting.email, name: acting.name, base: acting.base, role: acting.role,
+                                   isManager: me.isManager && acting.isManager, businesses: acting.businesses };
+      var bk = bizOfCall_(fn, args);
+      if (bk && who.businesses.indexOf(bk) < 0) throw new Error((who === me ? 'You don’t' : who.name + ' doesn’t') + ' have access to ' + BUSINESSES[bk].defaults.name + '.');
+    }
+
     if (NEEDS_ID[fn]) {
       var lock = LockService.getScriptLock();
       lock.waitLock(25000);
       try {
         if (alreadyDone_(id)) return json_({ ok: true, data: { ok: true, duplicate: true } });
-        var out = h(args, me, acting, token);
+        var out = h(args, who, acting, token);
         markDone_(id);
         return json_({ ok: true, data: out });
       } finally { lock.releaseLock(); }
     }
-    return json_({ ok: true, data: h(args, me, acting, token) });
+    return json_({ ok: true, data: h(args, who, acting, token) });
 
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message ? err.message : err) });
@@ -1266,7 +1325,7 @@ function doPost(e) {
 /* ------------------------------------------------- one-time sheet set-up */
 
 function setup() {
-  for (var t in TABS) tab_(t);
+  for (var t in TABS) { tab_(t); ensureHeaders_(t); }
   if (rows_('Team').length === 0) {
     append_('Team', { 'EMAIL': 'ricardo@uffgconstruction.com', 'NAME': 'Ricardo Uribe',
                       'TRUCK/LOCATION': "Ricky's Truck", 'ROLE': 'Manager' });
