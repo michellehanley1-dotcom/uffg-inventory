@@ -256,6 +256,11 @@ label.check input{width:auto;margin:0}
 .achip.more{border-style:dashed;color:var(--green);font-weight:600}
 .bline .brm{padding:4px 0;font-size:.8rem}
 .link.sm.codebtn{padding:2px 0;font-size:.74rem}
+/* v2.6.1: some iPhones (installed app) leave a strip under bottom bars. --gap pushes them down to the real
+   screen edge, and the white tail fills anything left so nothing shows through. */
+:root{--gap:0px}
+.tabs,.docbar,.sheet{bottom:calc(-1 * var(--gap))}
+.tabs::after,.docbar::after{content:'';position:absolute;left:0;right:0;top:100%;height:240px;background:#fff}
 </style>
 </head>
 <body>
@@ -3345,6 +3350,22 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { pa
   await refresh();
   if (!DATA) showAuth();
 })();
+
+/* Installed app on iPhone: if the page is shorter than the screen, measure the strip so bottom bars sit on the edge. */
+function fixBottomGap() {
+  let g = 0;
+  const standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  if (standalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+    const portrait = window.innerHeight >= window.innerWidth;
+    const H = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+    g = Math.round(H - window.innerHeight);
+    if (g < 2 || g > 120) g = 0;
+  }
+  document.documentElement.style.setProperty('--gap', g + 'px');
+}
+fixBottomGap();
+['resize', 'orientationchange', 'pageshow'].forEach(ev => window.addEventListener(ev, () => setTimeout(fixBottomGap, 60)));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(fixBottomGap, 60); });
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
