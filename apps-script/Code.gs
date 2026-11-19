@@ -4,7 +4,7 @@
  * Columns are always found by header NAME, never by position.
  */
 
-var VERSION   = '1.0.0';
+var VERSION   = '2.3.0';
 var SHEET_ID  = ''; // leave blank to use the sheet this script is bound to
 var CODE_TTL  = 10 * 60 * 1000;        // 6-digit code lifetime
 var CODE_TRIES= 5;
@@ -21,8 +21,31 @@ var TABS = {
   Log:       ['WHEN','WHO','ACTION','KIND','ITEM','FROM','TO','QTY','NOTE'],
   Auth:      ['EMAIL','CODE','EXPIRES','TRIES','LAST SENT'],
   Sessions:  ['TOKEN','EMAIL','EXPIRES'],
-  Processed: ['ID','WHEN']
+  Processed: ['ID','WHEN'],
+  Customers: ['ID','BUSINESS','NAME','COMPANY','PHONE','EMAIL','ADDRESS','NOTES','ACTIVE','CREATED'],
+  Services:  ['ID','BUSINESS','NAME','DESCRIPTION','UNIT','PRICE','TAXABLE','ACTIVE'],
+  Docs:      ['ID','BUSINESS','TYPE','NUMBER','CUSTOMER','TITLE','SITE','STATUS','DATE','DUE','PARENT','LINES',
+              'TAX RATE','DISCOUNT','DEPOSIT','NOTES','TERMS','SUBTOTAL','TAX','TOTAL','PAID','BILLED',
+              'SENT AT','APPROVED AT','CREATED BY','CREATED','UPDATED','DELETED'],
+  Payments:  ['ID','INVOICE','DATE','AMOUNT','METHOD','NOTE','WHO','DELETED'],
+  Expenses:  ['ID','BUSINESS','STATUS','DATE','VENDOR','ACCOUNT','AMOUNT','METHOD','JOB','NOTE','RECEIPT',
+              'RECEIPT LINK','HASH','DUP OF','SCANNED','CREATED BY','CREATED','UPDATED','DELETED'],
+  Company:   ['KEY','VALUE']
 };
+
+/** Tabs stored as plain text so Sheets never turns "2026-11-13" or "1/2" into a date. */
+var TEXT_TABS = { Customers:1, Services:1, Docs:1, Payments:1, Expenses:1, Company:1 };
+/** Columns kept as real numbers so the sheet can add them up. */
+var MONEY_COLS = { Expenses: { 'AMOUNT': 1 }, Payments: { 'AMOUNT': 1 } };
+
+function moneyCells_(name, sh, h, rowNum, arr) {
+  var cols = MONEY_COLS[name]; if (!cols) return;
+  for (var c in cols) {
+    if (h[c] === undefined) continue;
+    var v = Number(arr[h[c]]);
+    sh.getRange(rowNum, h[c] + 1).setNumberFormat('$#,##0.00').setValue(isFinite(v) ? v : 0);
+  }
+}
 
 var STATUSES = ['Good','Needs repair','Lost'];
 
@@ -36,6 +59,7 @@ function tab_(name) {
   var s = ss_().getSheetByName(name);
   if (!s) {
     s = ss_().insertSheet(name);
+    if (TEXT_TABS[name]) s.getRange(1, 1, s.getMaxRows(), TABS[name].length).setNumberFormat('@');
     s.getRange(1, 1, 1, TABS[name].length).setValues([TABS[name]]);
     s.setFrozenRows(1);
     s.getRange(1, 1, 1, TABS[name].length).setFontWeight('bold');
@@ -76,9 +100,21 @@ function append_(name, obj) {
   for (var k in obj) {
     var key = k.toUpperCase();
     if (h[key] === undefined) continue;
-    arr[h[key]] = obj[k];
+    arr[h[key]] = TEXT_TABS[name] ? txt_(obj[k]) : obj[k];
   }
-  sh.appendRow(arr);
+  if (TEXT_TABS[name]) {
+    var r = sh.getLastRow() + 1;
+    sh.getRange(r, 1, 1, width).setNumberFormat('@').setValues([arr]);
+    moneyCells_(name, sh, h, r, arr);
+  } else {
+    sh.appendRow(arr);
+  }
+}
+
+function txt_(v) {
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date) return v.toISOString();
+  return String(v);
 }
 
 /** Update one existing row by its _row number. */
@@ -87,7 +123,9 @@ function update_(name, rowNum, obj) {
   for (var k in obj) {
     var key = k.toUpperCase();
     if (h[key] === undefined) continue;
-    sh.getRange(rowNum, h[key] + 1).setValue(obj[k]);
+    var cell = sh.getRange(rowNum, h[key] + 1);
+    if (TEXT_TABS[name]) cell.setNumberFormat('@').setValue(txt_(obj[k]));
+    else cell.setValue(obj[k]);
   }
 }
 
@@ -277,11 +315,13 @@ function bootstrap_(args, me) {
              from: norm_(l['FROM']), to: norm_(l['TO']), qty: l['QTY'], note: norm_(l['NOTE']) };
   });
 
-  return {
+  var out = {
     version: VERSION, me: me, acting: acting, team: team,
     locations: locs, tools: tools, parts: parts, stock: stock, log: log,
     statuses: STATUSES, serverTime: now_().toISOString()
   };
+  if (me.isManager) out.biz = business_();
+  return out;
 }
 
 /* ---------------------------------------------------------------- writes */
@@ -478,11 +518,677 @@ function bulkImport_(a, me) {
   return { ok: true, added: added, skipped: skipped };
 }
 
+/* ============================================================ business */
+/* Customers, price book, estimates, change orders, invoices, payments.
+   Managers only. Everything lives in text-formatted tabs.             */
+
+var DOC_STATUSES = {
+  estimate: ['Draft','Sent','Approved','Declined'],
+  change:   ['Draft','Sent','Approved','Declined'],
+  invoice:  ['Draft','Sent','Partial','Paid','Void']
+};
+
+/* Two businesses share one app. Everything money-related is tagged with one of these. */
+var BUSINESSES = {
+  uffg: {
+    prefixE: 'E-', prefixI: 'INV-',
+    defaults: {
+      name: 'UFFG Construction LLC', tagline: '', contact: 'Ricardo Uribe', address: '', phone: '',
+      email: 'ricardo@uffgconstruction.com', license: '', color: '#2E6B4F',
+      taxRate: '0', estimateDays: '30', invoiceDays: '0',
+      estimateTerms: 'This estimate is valid for 30 days. Work is scheduled after signed approval.',
+      invoiceTerms: 'Thank you for your business.',
+      changeTerms: 'This change order becomes part of the original agreement once signed.'
+    }
+  },
+  uribest: {
+    prefixE: 'UB-E-', prefixI: 'UB-INV-',
+    defaults: {
+      name: 'Uribest Carports & Repairs LLC', tagline: 'Built to Last', contact: 'Ricardo Uribe, Project Manager',
+      address: 'Based in Texas', phone: '', email: 'uribestcarportsllc@gmail.com', license: '', color: '#1F4FB4',
+      taxRate: '0', estimateDays: '30', invoiceDays: '0',
+      estimateTerms: 'This estimate is valid for 30 days. Work is scheduled after signed approval.',
+      invoiceTerms: 'Thank you for your business.',
+      changeTerms: 'This change order becomes part of the original agreement once signed.'
+    }
+  }
+};
+function bizKey_(v) { return lower_(v) === 'uribest' ? 'uribest' : 'uffg'; }
+/* Chart of accounts. 5000s are job costs (cost of goods sold), 6000s are overhead. */
+var ACCOUNTS = [
+  { code: '5000', name: 'Job materials',                type: 'cogs' },
+  { code: '5100', name: 'Subcontractors',               type: 'cogs' },
+  { code: '5200', name: 'Job labor',                    type: 'cogs' },
+  { code: '5300', name: 'Equipment rental',             type: 'cogs' },
+  { code: '5400', name: 'Permits & inspections',        type: 'cogs' },
+  { code: '5500', name: 'Dump & disposal',              type: 'cogs' },
+  { code: '6000', name: 'Fuel',                         type: 'expense' },
+  { code: '6100', name: 'Vehicle repairs & maintenance', type: 'expense' },
+  { code: '6200', name: 'Tools & small equipment',      type: 'expense' },
+  { code: '6300', name: 'Insurance',                    type: 'expense' },
+  { code: '6400', name: 'Licenses & registrations',     type: 'expense' },
+  { code: '6500', name: 'Office, software & phone',     type: 'expense' },
+  { code: '6600', name: 'Meals',                        type: 'expense' },
+  { code: '6700', name: 'Advertising & marketing',      type: 'expense' },
+  { code: '6800', name: 'Legal & accounting',           type: 'expense' },
+  { code: '6900', name: 'Bank & card fees',             type: 'expense' },
+  { code: '6990', name: 'Other expenses',               type: 'expense' }
+];
+function accountName_(v) {
+  v = norm_(v);
+  for (var i = 0; i < ACCOUNTS.length; i++) if (ACCOUNTS[i].name === v || ACCOUNTS[i].code === v) return ACCOUNTS[i].name;
+  return v ? 'Other expenses' : '';
+}
+function vendorKey_(v) { return lower_(v).replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '').slice(0, 14); }
+
+function mustManage_(me) {
+  if (!me.isManager) throw new Error('Only a manager can do that.');
+}
+
+function num_(v) { var n = Number(v); return isFinite(n) ? n : 0; }
+function r2_(n) { return Math.round(num_(n) * 100) / 100; }
+
+function dstr_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return norm_(v);
+}
+
+/** Same math as the app: discount comes off the subtotal, tax only on taxable lines. */
+function totals_(lines, taxRate, discount) {
+  var sub = 0, taxable = 0;
+  (lines || []).forEach(function (l) {
+    if (l.heading) return;
+    var amt = r2_(num_(l.qty) * num_(l.rate));
+    sub += amt;
+    if (l.taxable) taxable += amt;
+  });
+  sub = r2_(sub);
+  var disc = Math.min(Math.max(0, r2_(discount)), sub);
+  var taxBase = sub ? taxable * (1 - disc / sub) : 0;
+  var tax = r2_(taxBase * num_(taxRate) / 100);
+  return { subtotal: sub, discount: disc, tax: tax, total: r2_(sub - disc + tax) };
+}
+
+function cleanLines_(lines) {
+  if (!Array.isArray(lines)) return [];
+  return lines.slice(0, 300).map(function (l) {
+    if (l && l.heading) return { heading: true, name: norm_(l.name).slice(0, 200) };
+    return {
+      name: norm_(l && l.name).slice(0, 200),
+      desc: norm_(l && l.desc).slice(0, 2000),
+      qty: num_(l && l.qty),
+      unit: norm_(l && l.unit).slice(0, 20),
+      rate: r2_(l && l.rate),
+      taxable: !!(l && l.taxable),
+      service: norm_(l && l.service)
+    };
+  }).filter(function (l) { return l.heading ? l.name : (l.name || l.desc); });
+}
+
+/** Write a whole row in one call (much faster than one cell at a time). */
+function writeRow_(name, rowNum, obj) {
+  var sh = tab_(name), h = headers_(sh), width = sh.getLastColumn();
+  var rng = sh.getRange(rowNum, 1, 1, width);
+  var cur = rng.getValues()[0];
+  for (var k in obj) {
+    var key = k.toUpperCase();
+    if (h[key] === undefined) continue;
+    cur[h[key]] = txt_(obj[k]);
+  }
+  cur = cur.map(txt_);
+  rng.setNumberFormat('@').setValues([cur]);
+  moneyCells_(name, sh, h, rowNum, cur);
+}
+
+function findBy_(name, col, val) {
+  var all = rows_(name);
+  for (var i = 0; i < all.length; i++) if (norm_(all[i][col]) === norm_(val)) return all[i];
+  return null;
+}
+
+/* ---- company ---- */
+
+/** { uffg: {...}, uribest: {...} } — saved values over defaults. Keys are stored as "uribest.name". */
+function company_() {
+  var out = {};
+  for (var b in BUSINESSES) {
+    out[b] = {};
+    for (var k in BUSINESSES[b].defaults) out[b][k] = BUSINESSES[b].defaults[k];
+  }
+  rows_('Company').forEach(function (r) {
+    var key = norm_(r['KEY']); if (!key) return;
+    var m = key.match(/^(uffg|uribest)\.(.+)$/), b = m ? m[1] : 'uffg', k = m ? m[2] : key;
+    if (out[b].hasOwnProperty(k)) out[b][k] = norm_(r['VALUE']);
+  });
+  return out;
+}
+
+function saveCompany_(a, me) {
+  mustManage_(me);
+  var b = bizKey_(a.business), vals = a.values || {};
+  for (var k in vals) {
+    if (!BUSINESSES[b].defaults.hasOwnProperty(k)) continue;
+    var key = b + '.' + k;
+    var r = findBy_('Company', 'KEY', key);
+    var v = norm_(vals[k]).slice(0, 2000);
+    if (r) writeRow_('Company', r._row, { 'VALUE': v });
+    else append_('Company', { 'KEY': key, 'VALUE': v });
+  }
+  log_(me.name, 'Updated company info', 'Company', BUSINESSES[b].defaults.name, '', '', '', '');
+  return { ok: true };
+}
+
+/* ---- customers ---- */
+
+function saveCustomer_(a, me) {
+  mustManage_(me);
+  var id = norm_(a.id) || Utilities.getUuid();
+  var name = norm_(a.name);
+  if (!name) throw new Error('A customer needs a name.');
+  var rec = {
+    'ID': id, 'BUSINESS': bizKey_(a.business), 'NAME': name.slice(0, 200), 'COMPANY': norm_(a.company).slice(0, 200),
+    'PHONE': norm_(a.phone).slice(0, 50), 'EMAIL': norm_(a.email).slice(0, 200),
+    'ADDRESS': norm_(a.address).slice(0, 500), 'NOTES': norm_(a.notes).slice(0, 2000), 'ACTIVE': 'YES'
+  };
+  var r = findBy_('Customers', 'ID', id);
+  if (r) { delete rec['BUSINESS']; writeRow_('Customers', r._row, rec); }
+  else {
+    rec['CREATED'] = now_().toISOString();
+    append_('Customers', rec);
+    log_(me.name, 'Added customer', 'Customer', name, '', '', '', '');
+  }
+  return { ok: true, id: id };
+}
+
+function archiveCustomer_(a, me) {
+  mustManage_(me);
+  var r = findBy_('Customers', 'ID', a.id);
+  if (!r) throw new Error('Customer not found.');
+  writeRow_('Customers', r._row, { 'ACTIVE': 'NO' });
+  log_(me.name, 'Archived customer', 'Customer', norm_(r['NAME']), '', '', '', '');
+  return { ok: true };
+}
+
+/* ---- price book ---- */
+
+function saveService_(a, me) {
+  mustManage_(me);
+  var id = norm_(a.id) || Utilities.getUuid();
+  var name = norm_(a.name);
+  if (!name) throw new Error('A service needs a name.');
+  var rec = {
+    'ID': id, 'BUSINESS': bizKey_(a.business), 'NAME': name.slice(0, 200), 'DESCRIPTION': norm_(a.description).slice(0, 2000),
+    'UNIT': norm_(a.unit).slice(0, 20), 'PRICE': r2_(a.price), 'TAXABLE': a.taxable ? 'YES' : 'NO', 'ACTIVE': 'YES'
+  };
+  var r = findBy_('Services', 'ID', id);
+  if (r) { delete rec['BUSINESS']; writeRow_('Services', r._row, rec); }
+  else append_('Services', rec);
+  return { ok: true, id: id };
+}
+
+function archiveService_(a, me) {
+  mustManage_(me);
+  var r = findBy_('Services', 'ID', a.id);
+  if (!r) throw new Error('Service not found.');
+  writeRow_('Services', r._row, { 'ACTIVE': 'NO' });
+  return { ok: true };
+}
+
+/* ---- documents ---- */
+
+function docRow_(id) {
+  var r = findBy_('Docs', 'ID', id);
+  return (r && lower_(r['DELETED']) !== 'yes') ? r : null;
+}
+
+function nextNumber_(type, parentRow, business) {
+  var all = rows_('Docs');
+  if (type === 'change') {
+    var base = norm_(parentRow['NUMBER']), n = 0;
+    all.forEach(function (d) {
+      if (norm_(d['TYPE']) === 'change' && norm_(d['PARENT']) === norm_(parentRow['ID'])) {
+        var m = norm_(d['NUMBER']).match(/CO(\d+)$/);
+        if (m) n = Math.max(n, Number(m[1]));
+      }
+    });
+    return base + '-CO' + (n + 1);
+  }
+  var B = BUSINESSES[bizKey_(business)];
+  var prefix = type === 'invoice' ? B.prefixI : B.prefixE, max = 1000;
+  all.forEach(function (d) {
+    if (norm_(d['TYPE']) !== type || bizKey_(d['BUSINESS']) !== bizKey_(business)) return;
+    var m = norm_(d['NUMBER']).match(/(\d+)$/);
+    if (m) max = Math.max(max, Number(m[1]));
+  });
+  return prefix + (max + 1);
+}
+
+function saveDoc_(a, me) {
+  mustManage_(me);
+  var d = a.doc || {};
+  var id = norm_(d.id);
+  if (!id) throw new Error('Missing document id.');
+  var existing = docRow_(id);
+  var type = existing ? norm_(existing['TYPE']) : norm_(d.type);
+  if (!DOC_STATUSES[type]) throw new Error('Unknown document type.');
+  if (!norm_(d.customer)) throw new Error('Pick a customer first.');
+
+  var parent = null;
+  if (type === 'change') {
+    parent = docRow_(existing ? existing['PARENT'] : d.parent);
+    if (!parent) throw new Error('A change order needs its estimate.');
+  }
+
+  var lines = cleanLines_(d.lines);
+  var t = totals_(lines, d.taxRate, d.discount);
+  var rec = {
+    'CUSTOMER': norm_(d.customer), 'TITLE': norm_(d.title).slice(0, 200), 'SITE': norm_(d.site).slice(0, 500),
+    'DATE': norm_(d.date), 'DUE': norm_(d.due), 'LINES': JSON.stringify(lines),
+    'TAX RATE': num_(d.taxRate), 'DISCOUNT': t.discount, 'DEPOSIT': num_(d.deposit),
+    'NOTES': norm_(d.notes).slice(0, 4000), 'TERMS': norm_(d.terms).slice(0, 4000),
+    'SUBTOTAL': t.subtotal, 'TAX': t.tax, 'TOTAL': t.total, 'UPDATED': now_().toISOString()
+  };
+
+  var number;
+  if (existing) {
+    number = norm_(existing['NUMBER']);
+    writeRow_('Docs', existing._row, rec);
+  } else {
+    var business = parent ? bizKey_(parent['BUSINESS']) : bizKey_(d.business);
+    number = nextNumber_(type, parent, business);
+    rec['ID'] = id; rec['BUSINESS'] = business; rec['TYPE'] = type; rec['NUMBER'] = number;
+    rec['STATUS'] = 'Draft'; rec['PARENT'] = parent ? norm_(parent['ID']) : norm_(d.parent);
+    rec['PAID'] = 0; rec['BILLED'] = ''; rec['CREATED BY'] = me.name;
+    rec['CREATED'] = now_().toISOString(); rec['DELETED'] = '';
+    append_('Docs', rec);
+    log_(me.name, 'Created ' + (type === 'change' ? 'change order' : type), 'Doc', number, '', '', '', '');
+  }
+
+  // An invoice built from an estimate (and its change orders) marks them billed.
+  if (type === 'invoice' && Array.isArray(a.billFrom)) {
+    a.billFrom.forEach(function (sid) {
+      var s = docRow_(sid);
+      if (s && !norm_(s['BILLED'])) writeRow_('Docs', s._row, { 'BILLED': id });
+    });
+  }
+  if (type === 'invoice') recalcPaid_(id);
+  return { ok: true, id: id, number: number };
+}
+
+function setDocStatus_(a, me) {
+  mustManage_(me);
+  var r = docRow_(a.id);
+  if (!r) throw new Error('Document not found.');
+  var type = norm_(r['TYPE']), st = norm_(a.status);
+  if (DOC_STATUSES[type].indexOf(st) < 0) throw new Error('That status does not apply here.');
+  var upd = { 'STATUS': st, 'UPDATED': now_().toISOString() };
+  if (st === 'Sent' && !norm_(r['SENT AT'])) upd['SENT AT'] = now_().toISOString();
+  if (st === 'Approved') upd['APPROVED AT'] = now_().toISOString();
+  writeRow_('Docs', r._row, upd);
+  log_(me.name, 'Marked ' + st, 'Doc', norm_(r['NUMBER']), norm_(r['STATUS']), st, '', '');
+  if (type === 'invoice' && st !== 'Void' && st !== 'Draft') recalcPaid_(a.id);
+  return { ok: true };
+}
+
+function deleteDoc_(a, me) {
+  mustManage_(me);
+  var r = docRow_(a.id);
+  if (!r) return { ok: true };
+  var id = norm_(r['ID']), type = norm_(r['TYPE']);
+  writeRow_('Docs', r._row, { 'DELETED': 'YES', 'UPDATED': now_().toISOString() });
+  rows_('Docs').forEach(function (d) {
+    if (lower_(d['DELETED']) === 'yes') return;
+    if (norm_(d['BILLED']) === id) writeRow_('Docs', d._row, { 'BILLED': '' });         // free up what this invoice billed
+    if (type === 'estimate' && norm_(d['TYPE']) === 'change' && norm_(d['PARENT']) === id)
+      writeRow_('Docs', d._row, { 'DELETED': 'YES' });                                     // its change orders go too
+  });
+  log_(me.name, 'Deleted', 'Doc', norm_(r['NUMBER']), '', '', '', '');
+  return { ok: true };
+}
+
+/* ---- payments ---- */
+
+function recalcPaid_(invoiceId) {
+  var r = docRow_(invoiceId);
+  if (!r || norm_(r['TYPE']) !== 'invoice') return;
+  var paid = 0;
+  rows_('Payments').forEach(function (p) {
+    if (norm_(p['INVOICE']) === norm_(invoiceId) && lower_(p['DELETED']) !== 'yes') paid += num_(p['AMOUNT']);
+  });
+  paid = r2_(paid);
+  var total = num_(r['TOTAL']), st = norm_(r['STATUS']);
+  if (st !== 'Void') {
+    if (paid > 0 && paid >= total) st = 'Paid';
+    else if (paid > 0) st = 'Partial';
+    else if (st === 'Paid' || st === 'Partial') st = 'Sent';
+  }
+  writeRow_('Docs', r._row, { 'PAID': paid, 'STATUS': st });
+}
+
+function addPayment_(a, me) {
+  mustManage_(me);
+  var inv = docRow_(a.invoice);
+  if (!inv || norm_(inv['TYPE']) !== 'invoice') throw new Error('Invoice not found.');
+  var amt = r2_(a.amount);
+  if (amt <= 0) throw new Error('Enter the amount paid.');
+  var id = norm_(a.id) || Utilities.getUuid();
+  if (findBy_('Payments', 'ID', id)) return { ok: true };
+  append_('Payments', {
+    'ID': id, 'INVOICE': norm_(a.invoice), 'DATE': norm_(a.date), 'AMOUNT': amt,
+    'METHOD': norm_(a.method).slice(0, 50), 'NOTE': norm_(a.note).slice(0, 500), 'WHO': me.name, 'DELETED': ''
+  });
+  recalcPaid_(a.invoice);
+  log_(me.name, 'Payment', 'Doc', norm_(inv['NUMBER']), '', '', String(amt), norm_(a.method));
+  return { ok: true };
+}
+
+function deletePayment_(a, me) {
+  mustManage_(me);
+  var p = findBy_('Payments', 'ID', a.id);
+  if (!p) return { ok: true };
+  writeRow_('Payments', p._row, { 'DELETED': 'YES' });
+  recalcPaid_(norm_(p['INVOICE']));
+  return { ok: true };
+}
+
+/* ---- expenses ---- */
+
+/** Drive: UFFG App Receipts / UFFG (or Uribest) / 2026-11 */
+function receiptsFolder_(business, ymd) {
+  var props = PropertiesService.getScriptProperties(), id = props.getProperty('RECEIPTS_FOLDER'), root = null;
+  if (id) { try { root = DriveApp.getFolderById(id); } catch (e) {} }
+  if (!root) { root = DriveApp.createFolder('UFFG App Receipts'); props.setProperty('RECEIPTS_FOLDER', root.getId()); }
+  if (!business) return root;
+  var b = childFolder_(root, business === 'uribest' ? 'Uribest' : 'UFFG');
+  return childFolder_(b, String(ymd || dstr_(now_())).slice(0, 7));
+}
+function childFolder_(parent, name) {
+  var it = parent.getFoldersByName(name);
+  return it.hasNext() ? it.next() : parent.createFolder(name);
+}
+/** File name + folder follow the expense, so Drive stays tidy for the accountant. */
+function fileReceipt_(fileId, business, rec) {
+  try {
+    var f = DriveApp.getFileById(fileId);
+    var label = [rec['DATE'], rec['VENDOR'] || rec['ACCOUNT'] || 'Receipt', '$' + r2_(rec['AMOUNT']).toFixed(2)].filter(String).join(' ')
+      .replace(/[\\/:*?"<>|]+/g, '');
+    f.setName(label + '.jpg');
+    f.moveTo(receiptsFolder_(business, rec['DATE']));
+    return f.getUrl();
+  } catch (e) { return ''; }
+}
+
+/* ---- receipt reading ---- */
+
+/** Google's own OCR: convert the photo into a temporary Google Doc and read its text. Needs the Drive advanced service. */
+function ocr_(blob) {
+  if (typeof Drive === 'undefined' || !Drive.Files) return '';
+  var tmp = null;
+  try {
+    tmp = Drive.Files.create({ name: 'receipt-ocr-tmp', mimeType: 'application/vnd.google-apps.document' }, blob, { ocrLanguage: 'en', fields: 'id' });
+    return DocumentApp.openById(tmp.id).getBody().getText() || '';
+  } catch (e) {
+    return '';
+  } finally {
+    if (tmp && tmp.id) { try { DriveApp.getFileById(tmp.id).setTrashed(true); } catch (e2) {} }
+  }
+}
+
+var KNOWN_VENDORS = [
+  ['home depot', 'The Home Depot', 'Job materials'], ["lowe's", "Lowe's", 'Job materials'], ['lowes', "Lowe's", 'Job materials'],
+  ['menards', 'Menards', 'Job materials'], ['ace hardware', 'Ace Hardware', 'Job materials'], ['84 lumber', '84 Lumber', 'Job materials'],
+  ['mccoy', "McCoy's", 'Job materials'], ['builders firstsource', 'Builders FirstSource', 'Job materials'], ['sherwin', 'Sherwin-Williams', 'Job materials'],
+  ['ferguson', 'Ferguson', 'Job materials'], ['fastenal', 'Fastenal', 'Job materials'], ['grainger', 'Grainger', 'Job materials'],
+  ['metal mart', 'Metal Mart', 'Job materials'], ['metals depot', 'Metals Depot', 'Job materials'], ['tractor supply', 'Tractor Supply', 'Job materials'],
+  ['harbor freight', 'Harbor Freight', 'Tools & small equipment'], ['northern tool', 'Northern Tool', 'Tools & small equipment'],
+  ['sunbelt', 'Sunbelt Rentals', 'Equipment rental'], ['united rentals', 'United Rentals', 'Equipment rental'], ['herc', 'Herc Rentals', 'Equipment rental'],
+  ['buc-ee', "Buc-ee's", 'Fuel'], ['bucee', "Buc-ee's", 'Fuel'], ['shell', 'Shell', 'Fuel'], ['exxon', 'Exxon', 'Fuel'], ['mobil', 'Mobil', 'Fuel'],
+  ['chevron', 'Chevron', 'Fuel'], ['valero', 'Valero', 'Fuel'], ['quiktrip', 'QuikTrip', 'Fuel'], ['qt ', 'QuikTrip', 'Fuel'], ['murphy', 'Murphy USA', 'Fuel'],
+  ['circle k', 'Circle K', 'Fuel'], ['7-eleven', '7-Eleven', 'Fuel'], ['racetrac', 'RaceTrac', 'Fuel'], ['love\'s', "Love's", 'Fuel'], ['pilot', 'Pilot', 'Fuel'],
+  ['sunoco', 'Sunoco', 'Fuel'], ['conoco', 'Conoco', 'Fuel'], ['phillips 66', 'Phillips 66', 'Fuel'], ['stripes', 'Stripes', 'Fuel'],
+  ["o'reilly", "O'Reilly Auto Parts", 'Vehicle repairs & maintenance'], ['autozone', 'AutoZone', 'Vehicle repairs & maintenance'], ['advance auto', 'Advance Auto Parts', 'Vehicle repairs & maintenance'],
+  ['walmart', 'Walmart', 'Job materials'], ['costco', 'Costco', 'Job materials'], ["sam's club", "Sam's Club", 'Job materials'],
+  ['whataburger', 'Whataburger', 'Meals'], ['mcdonald', "McDonald's", 'Meals'], ['taco', '', 'Meals'], ['chick-fil-a', 'Chick-fil-A', 'Meals']
+];
+
+/** Pull vendor, date, total, payment type out of OCR text. Best guess; the person confirms before saving. */
+function parseReceipt_(text) {
+  var out = { vendor: '', date: '', total: 0, account: '', method: '' };
+  var t = String(text || '').replace(/\r/g, '');
+  if (!t.trim()) return out;
+  var low = t.toLowerCase();
+  var lines = t.split('\n').map(function (l) { return l.trim(); }).filter(String);
+
+  for (var i = 0; i < KNOWN_VENDORS.length; i++) {
+    if (low.indexOf(KNOWN_VENDORS[i][0]) >= 0) { out.vendor = KNOWN_VENDORS[i][1]; out.account = KNOWN_VENDORS[i][2]; break; }
+  }
+  if (!out.vendor) {
+    for (var j = 0; j < Math.min(lines.length, 8); j++) {
+      var l = lines[j];
+      if (/[a-z]{3,}/i.test(l) && !/\d{3}[-.)\s]*\d{3}[-.\s]*\d{4}/.test(l) && !/^\d+\s+\w/.test(l) &&
+          !/(receipt|welcome|store|thank|invoice|order|date|www\.|\.com|tel|phone)/i.test(l)) { out.vendor = l.replace(/[^\w&'.\- ]/g, '').trim().slice(0, 60); break; }
+    }
+  }
+
+  var amt = /\$?\s*(\d{1,3}(?:,\d{3})+|\d+)\.(\d{2})(?!\d)/g;
+  var amountsIn = function (l) { var a = [], m; amt.lastIndex = 0; while ((m = amt.exec(l))) a.push(Number(m[1].replace(/,/g, '') + '.' + m[2])); return a; };
+  var best = 0;
+  // Prefer the last "total"-type line that isn't subtotal / savings / tax.
+  for (var k = 0; k < lines.length; k++) {
+    var L = lines[k].toLowerCase();
+    if (/(sub\s*-?\s*total|savings|you saved|discount|tax\b|change\b|tip\b|points)/.test(L)) continue;
+    if (/(grand total|total due|amount due|balance due|total\b|amount\b|sale\b|purchase\b|debit\b|credit\b|visa|mastercard)/.test(L)) {
+      var a = amountsIn(lines[k]);
+      if (!a.length && k + 1 < lines.length) a = amountsIn(lines[k + 1]);     // amount on the next line
+      if (a.length && /total|amount|balance/.test(L)) best = a[a.length - 1];
+      else if (a.length && !best) best = a[a.length - 1];
+    }
+  }
+  if (!best) {                                                              // fall back to the biggest number on the receipt
+    var all = amountsIn(t).filter(function (n) { return n > 0 && n < 100000; });
+    if (all.length) best = Math.max.apply(null, all);
+  }
+  out.total = r2_(best);
+
+  var mon = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var dm, y, mo, d;
+  if ((dm = t.match(/\b(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})\b/))) { y = +dm[1]; mo = +dm[2]; d = +dm[3]; }
+  else if ((dm = t.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/))) { mo = +dm[1]; d = +dm[2]; y = +dm[3]; if (y < 100) y += 2000; }
+  else if ((dm = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2}),?\s+(20\d{2})\b/i))) { mo = mon[dm[1].toLowerCase()]; d = +dm[2]; y = +dm[3]; }
+  if (y && mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+    var ds = y + '-' + pad(mo) + '-' + pad(d), todayS = dstr_(now_());
+    var age = (new Date(todayS) - new Date(ds)) / 864e5;
+    if (age > -2 && age < 800) out.date = ds;
+  }
+
+  if (/\b(visa|mastercard|master card|amex|american express|discover|debit|credit|card #|chip|contactless|apple pay|google pay)\b/i.test(t)) out.method = 'Card';
+  else if (/\bcash\b/i.test(t)) out.method = 'Cash';
+  else if (/\bcheck\b/i.test(t)) out.method = 'Check';
+  return out;
+}
+
+/** Possible duplicates: the exact same photo, or same vendor + amount within 3 days. */
+function findDuplicates_(business, hash, vendor, amount, date, excludeId) {
+  var out = [], vk = vendorKey_(vendor), amt = r2_(amount), t = date ? new Date(date).getTime() : NaN;
+  rows_('Expenses').forEach(function (x) {
+    if (lower_(x['DELETED']) === 'yes' || norm_(x['ID']) === norm_(excludeId) || bizKey_(x['BUSINESS']) !== business) return;
+    var reason = '';
+    if (hash && norm_(x['HASH']) === hash) reason = 'Same photo';
+    else if (amt > 0 && Math.abs(num_(x['AMOUNT']) - amt) < 0.005) {
+      var xv = vendorKey_(x['VENDOR']), xt = new Date(dstr_(x['DATE'])).getTime();
+      var sameVendor = !vk || !xv || xv === vk;
+      var close = isNaN(t) || isNaN(xt) || Math.abs(xt - t) <= 3 * 864e5;
+      if (sameVendor && close) reason = 'Same vendor, amount and date';
+    }
+    if (reason) out.push({ id: norm_(x['ID']), vendor: norm_(x['VENDOR']), amount: num_(x['AMOUNT']), date: dstr_(x['DATE']), reason: reason });
+  });
+  return out;
+}
+
+/** The account this vendor was booked to last time, if any. */
+function lastAccountFor_(business, vendor) {
+  var vk = vendorKey_(vendor); if (!vk) return '';
+  var all = rows_('Expenses'), best = '';
+  all.forEach(function (x) {
+    if (lower_(x['DELETED']) !== 'yes' && bizKey_(x['BUSINESS']) === business && norm_(x['STATUS']) !== 'Review' &&
+        vendorKey_(x['VENDOR']) === vk && norm_(x['ACCOUNT'])) best = norm_(x['ACCOUNT']);
+  });
+  return best;
+}
+
+function expenseOut_(x) {
+  return { id: norm_(x['ID']), business: bizKey_(x['BUSINESS']), status: norm_(x['STATUS']) || 'Booked', date: dstr_(x['DATE']),
+           vendor: norm_(x['VENDOR']), account: norm_(x['ACCOUNT']), amount: num_(x['AMOUNT']), method: norm_(x['METHOD']),
+           job: norm_(x['JOB']), note: norm_(x['NOTE']), receipt: !!norm_(x['RECEIPT']), link: norm_(x['RECEIPT LINK']),
+           hash: norm_(x['HASH']), dupOf: norm_(x['DUP OF']), scanned: !!norm_(x['SCANNED']),
+           createdBy: norm_(x['CREATED BY']), created: norm_(x['CREATED']) };
+}
+
+/** Save the photo to Drive right away and read it. With createDraft, also file it as an expense "To review". */
+function scanReceipt_(a, me) {
+  mustManage_(me);
+  var img = a.image || {};
+  if (!img.data) throw new Error('No photo received.');
+  var b = bizKey_(a.business), hash = norm_(a.hash).slice(0, 80);
+  var blob = Utilities.newBlob(Utilities.base64Decode(img.data), img.type || 'image/jpeg',
+    'Receipt ' + dstr_(now_()) + ' ' + Utilities.formatDate(now_(), Session.getScriptTimeZone(), 'HHmmss') + '.jpg');
+  var text = ocr_(blob);
+  var p = parseReceipt_(text);
+  var dups = findDuplicates_(b, hash, p.vendor, p.total, p.date, a.id);
+  var account = lastAccountFor_(b, p.vendor) || p.account;
+  if (a.skipIfSamePhoto && dups.some(function (d) { return d.reason === 'Same photo'; })) {
+    return { skipped: true, duplicates: dups, vendor: p.vendor, total: p.total, date: p.date };   // nothing saved
+  }
+  var file = receiptsFolder_(b, p.date || dstr_(now_())).createFile(blob);
+  var out = { fileId: file.getId(), link: file.getUrl(), text: text.slice(0, 3000), read: !!text, duplicates: dups,
+              vendor: p.vendor, date: p.date, total: p.total, account: account, method: p.method };
+  if (a.createDraft) {
+    var id = norm_(a.id) || Utilities.getUuid();
+    var rec = { 'ID': id, 'BUSINESS': b, 'STATUS': 'Review', 'DATE': p.date || dstr_(now_()), 'VENDOR': p.vendor,
+      'ACCOUNT': account, 'AMOUNT': p.total, 'METHOD': p.method, 'JOB': '', 'NOTE': '', 'RECEIPT': out.fileId,
+      'HASH': hash, 'DUP OF': dups.length ? dups[0].id : '', 'SCANNED': out.text, 'CREATED BY': me.name,
+      'CREATED': now_().toISOString(), 'UPDATED': now_().toISOString(), 'DELETED': '' };
+    rec['RECEIPT LINK'] = fileReceipt_(out.fileId, b, { 'DATE': rec['DATE'], 'VENDOR': p.vendor, 'AMOUNT': p.total }) || out.link;
+    append_('Expenses', rec);
+    out.expense = expenseOut_(findBy_('Expenses', 'ID', id));
+  }
+  return out;
+}
+
+function saveExpense_(a, me) {
+  mustManage_(me);
+  var id = norm_(a.id) || Utilities.getUuid();
+  var status = norm_(a.status) === 'Review' ? 'Review' : 'Booked';
+  var amt = r2_(a.amount);
+  if (status === 'Booked' && amt <= 0) throw new Error('Enter the amount.');
+  var existing = findBy_('Expenses', 'ID', id);
+  if (existing && lower_(existing['DELETED']) === 'yes') return { ok: true };
+  var rec = {
+    'STATUS': status, 'DATE': norm_(a.date), 'VENDOR': norm_(a.vendor).slice(0, 200),
+    'ACCOUNT': accountName_(a.account) || (status === 'Booked' ? 'Other expenses' : ''),
+    'AMOUNT': amt, 'METHOD': norm_(a.method).slice(0, 50), 'JOB': norm_(a.job), 'NOTE': norm_(a.note).slice(0, 1000),
+    'UPDATED': now_().toISOString()
+  };
+  var b = bizKey_(existing ? existing['BUSINESS'] : a.business);
+  if (norm_(a.hash)) rec['HASH'] = norm_(a.hash).slice(0, 80);
+  if (a.receipt && a.receipt.data) {
+    var blob = Utilities.newBlob(Utilities.base64Decode(a.receipt.data), a.receipt.type || 'image/jpeg', 'receipt.jpg');
+    rec['RECEIPT'] = receiptsFolder_(b, rec['DATE']).createFile(blob).getId();
+  } else if (norm_(a.receiptFile)) {
+    rec['RECEIPT'] = norm_(a.receiptFile);
+  } else if (a.removeReceipt) {
+    rec['RECEIPT'] = ''; rec['RECEIPT LINK'] = '';
+  }
+  if (norm_(a.scanText)) rec['SCANNED'] = norm_(a.scanText).slice(0, 3000);
+  var fid = rec['RECEIPT'] !== undefined ? rec['RECEIPT'] : (existing ? norm_(existing['RECEIPT']) : '');
+  if (fid) rec['RECEIPT LINK'] = fileReceipt_(fid, b, rec) || (existing ? norm_(existing['RECEIPT LINK']) : '');
+  // duplicate flag: re-checked on every save unless someone said "not a duplicate"
+  if (a.notDuplicate) rec['DUP OF'] = 'CLEARED';
+  else if (!existing || norm_(existing['DUP OF']) !== 'CLEARED') {
+    var d = findDuplicates_(b, rec['HASH'] || (existing ? norm_(existing['HASH']) : ''), rec['VENDOR'], amt, rec['DATE'], id);
+    rec['DUP OF'] = d.length ? d[0].id : '';
+  }
+  if (existing) writeRow_('Expenses', existing._row, rec);
+  else {
+    rec['ID'] = id; rec['BUSINESS'] = b; rec['CREATED BY'] = me.name; rec['CREATED'] = now_().toISOString(); rec['DELETED'] = '';
+    append_('Expenses', rec);
+    log_(me.name, 'Expense', 'Expense', rec['VENDOR'] || rec['ACCOUNT'], '', '', String(amt), BUSINESSES[b].defaults.name);
+  }
+  return { ok: true, id: id, dupOf: rec['DUP OF'] === 'CLEARED' ? '' : rec['DUP OF'] };
+}
+
+function deleteExpense_(a, me) {
+  mustManage_(me);
+  var r = findBy_('Expenses', 'ID', a.id);
+  if (r) writeRow_('Expenses', r._row, { 'DELETED': 'YES', 'UPDATED': now_().toISOString() });
+  return { ok: true };
+}
+
+function getReceipt_(a, me) {
+  mustManage_(me);
+  var r = findBy_('Expenses', 'ID', a.id);
+  var fid = r && norm_(r['RECEIPT']);
+  if (!fid) throw new Error('No receipt saved for this expense.');
+  var blob = DriveApp.getFileById(fid).getBlob();
+  return { type: blob.getContentType(), data: Utilities.base64Encode(blob.getBytes()) };
+}
+
+/** Run once from the editor after updating, so Google asks for Drive permission (for receipt photos). */
+function authorizeDrive() {
+  var f = receiptsFolder_();
+  Logger.log('Receipts folder ready: ' + f.getName());
+  if (typeof Drive !== 'undefined') Logger.log('Receipt reading is on.');
+  else Logger.log('Receipt reading is OFF: add the "Drive API" service (Services +) to turn it on.');
+  DocumentApp.getActiveDocument;   // makes Google ask for Docs permission too (used to read scanned text)
+}
+
+/* ---- read ---- */
+
+function business_() {
+  var customers = rows_('Customers').filter(function (c) { return lower_(c['ACTIVE']) !== 'no' && norm_(c['ID']); })
+    .map(function (c) {
+      return { id: norm_(c['ID']), business: bizKey_(c['BUSINESS']), name: norm_(c['NAME']), company: norm_(c['COMPANY']), phone: norm_(c['PHONE']),
+               email: norm_(c['EMAIL']), address: norm_(c['ADDRESS']), notes: norm_(c['NOTES']) };
+    });
+  var services = rows_('Services').filter(function (s) { return lower_(s['ACTIVE']) !== 'no' && norm_(s['ID']); })
+    .map(function (s) {
+      return { id: norm_(s['ID']), business: bizKey_(s['BUSINESS']), name: norm_(s['NAME']), description: norm_(s['DESCRIPTION']),
+               unit: norm_(s['UNIT']), price: num_(s['PRICE']), taxable: lower_(s['TAXABLE']) === 'yes' };
+    });
+  var docs = rows_('Docs').filter(function (d) { return lower_(d['DELETED']) !== 'yes' && norm_(d['ID']); })
+    .map(function (d) {
+      var lines = [];
+      try { lines = JSON.parse(norm_(d['LINES']) || '[]'); } catch (e) {}
+      return {
+        id: norm_(d['ID']), business: bizKey_(d['BUSINESS']), type: norm_(d['TYPE']), number: norm_(d['NUMBER']), customer: norm_(d['CUSTOMER']),
+        title: norm_(d['TITLE']), site: norm_(d['SITE']), status: norm_(d['STATUS']), date: dstr_(d['DATE']),
+        due: dstr_(d['DUE']), parent: norm_(d['PARENT']), lines: lines, taxRate: num_(d['TAX RATE']),
+        discount: num_(d['DISCOUNT']), deposit: num_(d['DEPOSIT']), notes: norm_(d['NOTES']), terms: norm_(d['TERMS']),
+        subtotal: num_(d['SUBTOTAL']), tax: num_(d['TAX']), total: num_(d['TOTAL']), paid: num_(d['PAID']),
+        billed: norm_(d['BILLED']), sentAt: norm_(d['SENT AT']), approvedAt: norm_(d['APPROVED AT']),
+        createdBy: norm_(d['CREATED BY']), created: norm_(d['CREATED']), updated: norm_(d['UPDATED'])
+      };
+    });
+  var payments = rows_('Payments').filter(function (p) { return lower_(p['DELETED']) !== 'yes' && norm_(p['ID']); })
+    .map(function (p) {
+      return { id: norm_(p['ID']), invoice: norm_(p['INVOICE']), date: dstr_(p['DATE']), amount: num_(p['AMOUNT']),
+               method: norm_(p['METHOD']), note: norm_(p['NOTE']), who: norm_(p['WHO']) };
+    });
+  var expenses = rows_('Expenses').filter(function (x) { return lower_(x['DELETED']) !== 'yes' && norm_(x['ID']); }).map(expenseOut_);
+  expenses.forEach(function (x) { if (x.dupOf === 'CLEARED') x.dupOf = ''; });
+  return { company: company_(), customers: customers, services: services, docs: docs, payments: payments,
+           expenses: expenses, accounts: ACCOUNTS };
+}
+
 /* --------------------------------------------------------------- routing */
 
 var PUBLIC = { requestCode: requestCode_, verifyCode: verifyCode_ };
 var NEEDS_ID = { addTool:1, moveTool:1, setToolStatus:1, addPart:1, setLowTarget:1,
-                 adjustStock:1, transferStock:1, addLocation:1, archiveLocation:1, bulkImport:1 };
+                 adjustStock:1, transferStock:1, addLocation:1, archiveLocation:1, bulkImport:1,
+                 saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1,
+                 saveDoc:1, setDocStatus:1, deleteDoc:1, addPayment:1, deletePayment:1,
+                 saveExpense:1, deleteExpense:1 };
 
 function handlers_() {
   return {
@@ -492,7 +1198,12 @@ function handlers_() {
     addPart: addPart_, setLowTarget: setLowTarget_,
     adjustStock: adjustStock_, transferStock: transferStock_,
     addLocation: addLocation_, archiveLocation: archiveLocation_,
-    bulkImport: bulkImport_
+    bulkImport: bulkImport_,
+    saveCompany: saveCompany_, saveCustomer: saveCustomer_, archiveCustomer: archiveCustomer_,
+    saveService: saveService_, archiveService: archiveService_,
+    saveDoc: saveDoc_, setDocStatus: setDocStatus_, deleteDoc: deleteDoc_,
+    addPayment: addPayment_, deletePayment: deletePayment_,
+    saveExpense: saveExpense_, deleteExpense: deleteExpense_, getReceipt: getReceipt_, scanReceipt: scanReceipt_
   };
 }
 
