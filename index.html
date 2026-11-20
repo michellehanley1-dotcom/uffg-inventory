@@ -247,6 +247,18 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
 .vstage{flex:1;position:relative;overflow:hidden;touch-action:none}
 #vImg{position:absolute;left:50%;top:50%;max-width:100%;max-height:100%;transform-origin:center center;user-select:none;-webkit-user-drag:none;will-change:transform}
 .vhint{text-align:center;font-size:.74rem;opacity:.6;padding:6px 0 calc(env(safe-area-inset-bottom) + 8px)}
+.logbtn{font-size:1.05rem;padding:15px;margin-bottom:14px}
+.logopts{display:grid;gap:8px}
+.logopt{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;text-align:left;cursor:pointer;width:100%}
+.logopt:active{background:var(--cream2)}
+.logopt .li{font-size:1.5rem;width:34px;text-align:center}
+.logopt b{display:block;font-size:1rem}
+.logopt .meta{display:block}
+.jmeta{margin-top:6px}
+.cardask{background:#FBF4E6;border:1px solid #EAD7AE;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:.88rem}
+.cardask .field{margin-bottom:6px}
+.norc{background:var(--cream2);border-radius:8px;padding:9px 11px;margin-bottom:12px;font-size:.86rem}
+.cardok{background:var(--cream2);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-size:.84rem;color:var(--green-d)}
 .splitleft{border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:.88rem;font-weight:600}
 .splitleft.ok{background:#E2EFE7;color:var(--green-d)}
 .splitleft.off{background:#FBEFE6;color:#7A3B12}
@@ -356,7 +368,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
 const $  = s => document.querySelector(s);
 const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const APP_VERSION = '2.7.1';
+const APP_VERSION = '2.8.0';
 const uid = () => (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
 const LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -560,7 +572,7 @@ const TAB_LABEL = { customers: 'Customers', estimates: 'Estimates', invoices: 'I
 /* Money screens follow the person you're viewing as. Only a real manager can view as someone. */
 const isMgr = () => !!(me().isManager && acting().isManager);
 const allowedBiz = () => (DATA && DATA.biz && DATA.biz.businesses) || acting().businesses || ['uffg', 'uribest'];
-const mainTabs = () => isMgr() ? ['customers', 'estimates', 'invoices', 'expenses', 'inventory', 'more'] : ['inventory', 'more'];
+const mainTabs = () => isMgr() ? ['customers', 'estimates', 'invoices', 'expenses', 'more'] : ['inventory', 'more'];
 
 /* ---------- which business: UFFG or Uribest ---------- */
 const BIZ_NAMES = { uffg: 'UFFG', uribest: 'Uribest' };
@@ -647,10 +659,11 @@ function render() {
     customers: vCustomers, estimates: v => vDocList(v, 'estimate'), invoices: v => vDocList(v, 'invoice'), expenses: vExpenses,
     inventory: vInventory, more: vMore,
     customer: vCustomer, doc: vDoc, services: vServices, company: vCompany, pnl: vPnl,
-    banks: vBanks, bank: vBank, vendors: vVendors, balance: vBalance, budget: vBudget, budgets: vBudgets
+    banks: vBanks, bank: vBank, vendors: vVendors, balance: vBalance, budget: vBudget, budgets: vBudgets,
+    jobcost: vJobCost, allexp: vAllExpenses
   };
   const titles = { customer: 'Customer', services: 'Services & pricing', company: 'Company info', pnl: 'Profit & loss',
-    banks: 'Bank & cards', bank: (bankById(r.id) || {}).name || 'Account', vendors: 'Vendors & subs', balance: 'Balance sheet', budget: 'Job budget', budgets: 'Job budgets' };
+    banks: 'Bank & cards', bank: (bankById(r.id) || {}).name || 'Account', vendors: 'Vendors & subs', balance: 'Balance sheet', budget: 'Job budget', budgets: 'Job budgets', jobcost: 'Job costs', allexp: r.id === 'overhead' ? 'Overhead' : 'All expenses' };
   $('#viewTitle').textContent = (r.view === 'doc' ? docLabel(EDIT) : (titles[r.view] || TAB_LABEL[r.view] || r.view)).toUpperCase();
   (views[r.view] || vInventory)(wrap, r.id);
 }
@@ -968,11 +981,21 @@ function addPartSheet() {
 /* ---------- more ---------- */
 function vMore(v) {
   if (isMgr()) {
+    // Inventory lives here for managers (crew Leads still get it as a bottom tab)
+    const out = tools().filter(t => t.by).length, low = lowParts().length, bad = tools().filter(t => t.status !== 'Good').length;
+    const inv = el('div', 'card tap');
+    inv.innerHTML = `<div class="row"><div class="grow"><div class="ttl">Inventory</div>
+      <div class="meta">${esc([tools().length + ' tools', out ? out + ' checked out' : '', bad ? bad + ' need repair / lost' : '', parts().length + ' parts'].filter(Boolean).join(' · '))}</div></div>
+      ${low ? `<span class="pill bad">${low} low</span>` : '<span class="chev">›</span>'}</div>`;
+    inv.onclick = () => go('inventory');
+    v.appendChild(el('h2', null, 'Tools & parts'));
+    v.appendChild(inv);
+    v.appendChild(el('div', 'gap'));
     v.appendChild(el('h2', null, BIZ_NAMES[BIZ] + ' business'));
     [['Profit & loss', 'Income, job costs, overhead, profit by project', 'pnl'],
      ['Job budgets', 'Budget vs actual for every job', 'budgets'],
      ['Balance sheet', 'Cash, what customers owe, what the business owes', 'balance'],
-     ['Bank & cards', banksOf().length ? banksOf().map(bankLabel).join(' · ') : 'Checks, deposits, running balance', 'banks'],
+     ['Bank & cards', (banksOf().length ? banksOf().map(bankLabel).join(' · ') : 'Checks, deposits, running balance') + (cardsOf().length ? ' · ' + cardsOf().length + ' card' + (cardsOf().length > 1 ? 's' : '') : ''), 'banks'],
      ['Vendors & subcontractors', 'Who you pay, and how much this year', 'vendors'],
      ['Company info', (companyOf(BIZ).name || BIZ_NAMES[BIZ]) + ' · printed on PDFs', 'company'],
      ['Services & pricing', (svcs().length || 'No') + ' saved services', 'services']].forEach(([t, m, view]) => {
@@ -1865,30 +1888,92 @@ async function fileHash(file) {
 }
 
 /* ---- Expenses tab ---- */
+/* Expenses tab: log a receipt, review uploads, then each job's budget vs actual. The full list lives one tap away. */
 function vExpenses(v) {
-  const all = expenses(), rng = periodRange(EXP.period);
-  const live = all.filter(booked), drafts = all.filter(x => !booked(x));
-  const inPeriod = live.filter(x => EXP.period === 'all' || inRange(x.date, rng));
-  const yr = live.filter(x => inRange(x.date, periodRange('year')));
-  const s = el('div', 'stat');
-  s.innerHTML = `<div><b>${money(sum(inPeriod))}</b><span>${esc(PERIOD_LABEL[EXP.period])} · ${inPeriod.length}</span></div>
-    <div class="tap" id="pnlTile"><b>${money(sum(yr))}</b><span>This year · P&amp;L ›</span></div>`;
-  v.appendChild(s);
-  s.querySelector('#pnlTile').onclick = () => go('pnl');
-
-  const g = el('div', 'grid2'); g.style.marginBottom = '10px';
-  g.appendChild(btn('📷 Scan receipt', () => expenseSheet(null, '', { scan: true })));
-  g.appendChild(btn('✍ Check', () => checkSheet({})));
-  g.appendChild(btn('⬆ Upload photos', () => bulkPick(), 'ghost'));
-  g.appendChild(btn('+ By hand', () => expenseSheet(null), 'ghost'));
-  v.appendChild(g);
+  const all = expenses(), live = all.filter(booked), drafts = all.filter(x => !booked(x));
+  const lb = btn('＋ Log receipt', () => logReceiptSheet({})); lb.classList.add('wide', 'logbtn');
+  v.appendChild(lb);
 
   if (drafts.length) {
     v.appendChild(el('h2', null, 'To review (' + drafts.length + ')'));
-    v.appendChild(el('div', 'sub', 'Uploaded receipts. Check the amount, pick the account and project, then book them.'));
+    v.appendChild(el('div', 'sub', 'Uploaded receipts. Check the amount, pick the account and job, then book them.'));
     drafts.sort((a, b) => (b.created || '').localeCompare(a.created || '')).forEach(x => v.appendChild(expenseCard(x)));
     v.appendChild(el('div', 'gap'));
   }
+
+  v.appendChild(el('h2', null, 'Jobs'));
+  const jobs = jobOptions().filter(j => budgetOf(j).length || jobExpenses(j).length)
+    .sort((a, b) => (lastActivity(b) || '').localeCompare(lastActivity(a) || ''));
+  if (!jobs.length) v.appendChild(el('div', 'empty sm', 'Log a receipt and pick its job to see job costs here.'));
+  jobs.forEach(j => v.appendChild(jobCard(j)));
+
+  const ov = live.filter(x => !x.job), ovYr = ov.filter(x => inRange(x.date, periodRange('year')));
+  v.appendChild(el('h2', null, 'Not tied to a job'));
+  v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">Overhead</div>
+      <div class="meta">${ov.length} expense${ov.length === 1 ? '' : 's'} · ${money(sum(ovYr))} this year</div></div><span class="chev">›</span></div>`, () => go('allexp', 'overhead')));
+  v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">All expenses</div>
+      <div class="meta">Search, filter by month or account, export for your accountant</div></div><span class="chev">›</span></div>`, () => go('allexp', 'all')));
+}
+function lastActivity(j) { const xs = jobExpenses(j); return xs.reduce((m, x) => (x.date || '') > m ? x.date : m, j.date || ''); }
+function splitCostTypes(xs) {
+  const jc = sum(xs.filter(x => acctOf(x.account).type === 'cogs')), oh = r2(sum(xs) - jc);
+  return { jc, oh };
+}
+function jobCard(j) {
+  const b = budgetData(j), has = budgetOf(j).length, xs = jobExpenses(j), t = splitCostTypes(xs);
+  return card(`<div class="row"><div class="grow"><div class="ttl">${esc(jobLabel(j.id))}</div>
+      <div class="meta">${esc(custName(j.customer))}</div></div>
+      <div class="rcol"><div class="amt ${has && b.left < 0 ? 'negtext' : ''}">${money(b.tA)}</div><div class="meta">${has ? 'of ' + money(b.tB) + ' budget' : 'spent · no budget'}</div></div></div>
+    ${has ? barHtml(b.tA, b.tB) : ''}
+    <div class="meta jmeta">Job costs ${money(t.jc)} · Overhead ${money(t.oh)}${has ? ` · <b class="${b.left < 0 ? 'negtext' : ''}">${money(Math.abs(b.left))} ${b.left < 0 ? 'over' : 'left'}</b>` : ''}</div>`, () => go('jobcost', j.id));
+}
+
+/* One job: budget vs actual, then every actual expense. */
+function vJobCost(v, id) {
+  const j = docById(id); if (!j) { v.appendChild(el('div', 'empty', 'Job not found.')); return; }
+  const xs = jobExpenses(j).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created || '').localeCompare(a.created || ''));
+  const t = splitCostTypes(xs);
+  v.appendChild(card(`<div class="kicker">${esc(BIZ_NAMES[j.business || 'uffg'])} · job</div><div class="ttl">${esc(jobLabel(j.id))}</div>
+    <div class="meta">${esc(custName(j.customer))} · ${j.type === 'estimate' ? 'contract' : 'invoice'} ${money(jobRevenue(j))}</div><div style="margin-top:6px"><button class="link" id="openJ">Open ${esc(TYPE_LABEL[j.type].toLowerCase())} ›</button></div>`));
+  v.querySelector('#openJ').onclick = () => openDoc(j.id);
+  const lb = btn('＋ Log receipt for this job', () => logReceiptSheet({ job: j.id })); lb.classList.add('wide'); lb.style.marginBottom = '6px';
+  v.appendChild(lb);
+  if (!budgetSection(v, j)) {
+    v.appendChild(el('h2', null, 'Budget vs actual'));
+    const c = el('div', 'card');
+    c.innerHTML = `<div class="trow"><span>Spent so far</span><span>${money(sum(xs))}</span></div>
+      <div class="meta" style="margin:4px 0 10px">No budget yet. Set one to see each category against its plan.</div>`;
+    c.appendChild(btn('Set a budget', () => go('budget', j.id), 'ghost'));
+    v.appendChild(c);
+  }
+  v.appendChild(el('h2', null, 'Actuals (' + xs.length + ')'));
+  v.appendChild(card(`<div class="trow"><span>Job costs</span><span>${money(t.jc)}</span></div><div class="trow"><span>Overhead on this job</span><span>${money(t.oh)}</span></div>
+    <div class="trow big"><span>Total</span><span>${money(sum(xs))}</span></div>`));
+  if (!xs.length) v.appendChild(el('div', 'empty sm', 'Nothing booked to this job yet.'));
+  let last = '';
+  xs.forEach(x => { if (x.date !== last) { last = x.date; v.appendChild(el('div', 'dhead', esc(fmtDate(x.date) || 'No date'))); } v.appendChild(expenseCard(x)); });
+}
+
+/* Log receipt: pick how. */
+function logReceiptSheet(o) {
+  o = o || {};
+  const f = el('div', 'logopts');
+  [['📷', 'Scan a receipt', 'Take a photo now', () => expenseSheet(null, o.job || '', { scan: true })],
+   ['⬆', 'Upload photos', 'Pick one or more from your photo album', () => bulkPick(o.job || '')],
+   ['✍', 'No receipt', 'Type it in: a check, cash, transfer…', () => expenseSheet(null, o.job || '', { noReceipt: true })]].forEach(([ic, t, m, fn]) => {
+    const b = el('button', 'logopt', `<span class="li">${ic}</span><span class="grow"><b>${esc(t)}</b><span class="meta">${esc(m)}</span></span><span class="chev">›</span>`);
+    b.type = 'button'; b.onclick = () => { closeSheet(); setTimeout(fn, 230); };
+    f.appendChild(b);
+  });
+  openSheet('Log receipt' + (o.job ? ' · ' + jobLabel(o.job) : ' · ' + BIZ_NAMES[BIZ]), f);
+}
+
+/* The full list (old Expenses screen): all expenses, or just overhead. */
+function vAllExpenses(v, which) {
+  const onlyOverhead = which === 'overhead';
+  const all = expenses().filter(x => !onlyOverhead || !x.job), rng = periodRange(EXP.period);
+  const live = all.filter(booked);
+  const inPeriod = live.filter(x => EXP.period === 'all' || inRange(x.date, rng));
 
   chipRow(v, [['month', 'This month'], ['last', 'Last month'], ['year', 'This year'], ['all', 'All']], EXP.period, p => {
     EXP.period = p; EXP.cat = ''; LS.set('uffg.expPeriod', p); render();
@@ -1925,7 +2010,7 @@ function vExpenses(v) {
   function paint() {
     const items = currentList(); list.innerHTML = '';
     if (!items.length) {
-      list.appendChild(el('div', 'empty', live.length ? 'No expenses here.' : 'No ' + BIZ_NAMES[BIZ] + ' expenses yet. Scan a receipt or upload them from your photos.'));
+      list.appendChild(el('div', 'empty', live.length ? 'No expenses here.' : (onlyOverhead ? 'No overhead expenses yet.' : 'No ' + BIZ_NAMES[BIZ] + ' expenses yet. Tap “Log receipt” on the Expenses tab.')));
       return;
     }
     let lastDate = '';
@@ -1965,35 +2050,44 @@ function shrinkImage(file, max, q) {
 }
 
 /* ---- upload several receipts from the photo album ---- */
-let BULK_INPUT = null;
-function bulkPick() {
+let BULK_INPUT = null, BULK_JOB = '';
+function bulkPick(job) {
+  BULK_JOB = job || '';
   if (!navigator.onLine) return toast('Uploading receipts needs signal. Try again when you have it.', true);
   if (!BULK_INPUT) {
     BULK_INPUT = el('input'); BULK_INPUT.type = 'file'; BULK_INPUT.accept = 'image/*'; BULK_INPUT.multiple = true;
     BULK_INPUT.className = 'hide'; BULK_INPUT.id = 'bulkFiles'; document.body.appendChild(BULK_INPUT);
-    BULK_INPUT.onchange = () => { const fs = Array.from(BULK_INPUT.files || []); BULK_INPUT.value = ''; if (fs.length) bulkUpload(fs); };
+    BULK_INPUT.onchange = () => { const fs = Array.from(BULK_INPUT.files || []); BULK_INPUT.value = ''; if (fs.length) bulkUpload(fs, BULK_JOB); };
   }
   BULK_INPUT.click();
 }
-async function bulkUpload(files) {
+async function bulkUpload(files, job) {
   const business = BIZ, results = [];
   const b = el('div');
   b.innerHTML = `<div class="scanstat busy" id="bkst">Starting…</div><div id="bkl"></div>`;
   openSheet('Uploading ' + files.length + ' receipt' + (files.length > 1 ? 's' : '') + ' · ' + BIZ_NAMES[business], b);
   $('#scrim').onclick = () => {};                       // keep it open until done
   for (let i = 0; i < files.length; i++) {
-    $('#bkst').textContent = 'Reading ' + (i + 1) + ' of ' + files.length + '…';
+    $('#bkst').textContent = 'Saving ' + (i + 1) + ' of ' + files.length + '…';
     let line;
     try {
       const hash = await fileHash(files[i]);
       const img = await shrinkImage(files[i], 1800, 0.8);
-      const r = await call('scanReceipt', { business, image: { data: img.data, type: img.type }, hash, createDraft: true, skipIfSamePhoto: true, id: uid() });
-      if (r.skipped) line = `<b>Skipped</b> — already uploaded (${esc(r.duplicates[0].vendor || 'receipt')} ${money(r.duplicates[0].amount)}, ${esc(fmtDate(r.duplicates[0].date))})`;
+      // 1) save the photo + a "To review" entry first, so it's never lost
+      const up = await call('uploadReceipt', { business, image: { data: img.data, type: img.type }, hash, createDraft: true, skipIfSamePhoto: true, id: uid(), job: job || '' });
+      if (up.skipped) line = `<b>Skipped</b> — already uploaded (${esc(up.duplicates[0].vendor || 'receipt')} ${money(up.duplicates[0].amount)}, ${esc(fmtDate(up.duplicates[0].date))})`;
       else {
         if (!biz().expenses) biz().expenses = [];
-        upsertLocal(biz().expenses, r.expense); RECEIPTS[r.expense.id] = img.preview;
-        line = `${esc(r.vendor || 'Unknown vendor')} · ${r.total ? money(r.total) : 'no total found'}` +
-          (r.duplicates.length ? ` · <span class="pill bad">Possible duplicate</span>` : '');
+        upsertLocal(biz().expenses, up.expense); RECEIPTS[up.expense.id] = img.preview;
+        // 2) then read it
+        $('#bkst').textContent = 'Reading ' + (i + 1) + ' of ' + files.length + '…';
+        try {
+          const r = await call('readReceipt', { id: up.expense.id });
+          if (r.expense) upsertLocal(biz().expenses, r.expense);
+          line = !r.read ? `✓ Saved · <span class="warntext">couldn’t read it — type the details when you review</span>`
+            : `✓ ${esc(r.vendor || 'Unknown store')} · ${r.total ? money(r.total) : 'no total found'}` + cardBit(r) +
+              (r.duplicates.length ? ` · <span class="pill bad">Possible duplicate</span>` : '');
+        } catch (e) { line = `✓ Saved · <span class="warntext">couldn’t read it yet — tap Read again when you review</span>`; }
       }
     } catch (e) { line = '<span class="dangertext">Couldn’t upload: ' + esc(e.message) + '</span>'; }
     results.push(line);
@@ -2001,7 +2095,7 @@ async function bulkUpload(files) {
   }
   saveLocal();
   const st = $('#bkst'); st.classList.remove('busy');
-  st.textContent = 'Done. They’re saved to Drive and waiting in “To review”.';
+  st.textContent = 'Done. The photos are saved in Drive and waiting in “To review”.';
   const ok = btn('Review them', () => { closeSheet(); goTab('expenses'); }); ok.classList.add('wide'); ok.style.marginTop = '10px';
   b.appendChild(ok);
   $('#scrim').onclick = closeSheet;
@@ -2017,7 +2111,7 @@ function expenseSheet(x, presetJob, opts) {
   if (x.bank === undefined) x.bank = '';
   const reviewing = x.status === 'Review';
   let pending = null, removeReceipt = false, scanned = null, preview = null, status = '', busy = false, hash = '', notDup = false, serverDups = [];
-  let autoTried = false, loadingRc = false;
+  let autoTried = false, loadingRc = false, lastCard = x.card || '', readFailed = false;
   const touched = {};
   const vendors = [...new Set(expenses().map(e => e.vendor).filter(Boolean))].slice(0, 80);
   const jobs = jobOptions();
@@ -2025,19 +2119,24 @@ function expenseSheet(x, presetJob, opts) {
   const acctOpts = sel => ['cogs', 'expense'].map(t => `<optgroup label="${t === 'cogs' ? 'Job costs (cost of goods sold)' : 'Overhead (operating expenses)'}">` +
     accounts().filter(a => a.type === t).map(a => `<option value="${esc(a.name)}" ${a.name === sel ? 'selected' : ''}>${esc(a.code + ' · ' + a.name)}</option>`).join('') + '</optgroup>').join('');
   const b = el('div');
-  const rcHtml = `<label>Receipt</label><div class="receipt${reviewing ? ' big' : ''}" id="xrc"></div>
-     <input id="xfile" type="file" accept="image/*" class="hide">`;
+  const noRc = !!opts.noReceipt && isNew;
+  const rcHtml = (noRc ? `<button type="button" class="link" id="xrcshow" style="margin:2px 0 12px">📷 Have a receipt after all? Add a photo</button>` : '') +
+    `<div id="xrcw"${noRc ? ' class="hide"' : ''}><label>Receipt</label><div class="receipt${reviewing ? ' big' : ''}" id="xrc"></div>
+     <input id="xfile" type="file" accept="image/*" class="hide"></div>`;
   b.innerHTML = (reviewing ? rcHtml : '') +
-    `<div id="xdup"></div>` +
+    (noRc ? `<div class="norc">✍ No receipt — type it in. For a check, set <b>Paid with</b> to Check and add the check #.</div>` : '') +
+    `<div id="xdup"></div><div id="xcard"></div>` +
     `<div class="grid2">` + field('Amount $', `<input id="xam" class="money" type="number" inputmode="decimal" step="0.01" value="${x.amount || ''}" placeholder="0.00">`) +
     field('Date', `<input id="xdt" type="date" value="${esc(x.date)}">`) + `</div>` +
     field('Vendor', `<input id="xvn" list="xvl" value="${esc(x.vendor)}" placeholder="Home Depot, Shell…" autocomplete="off"><datalist id="xvl">${vendors.map(v => `<option value="${esc(v)}">`).join('')}</datalist>`) +
     field('Book to account', `<select id="xac"><option value="">Pick an account…</option>${acctOpts(x.account)}</select><div class="hint" id="xah"></div>`) +
     field('Project (for job costing)', `<select id="xjb"><option value="">No project — general overhead</option>${jobs.map(j => `<option value="${esc(j.id)}" ${j.id === x.job ? 'selected' : ''}>${esc(jobLabel(j.id) + ' — ' + custName(j.customer))}</option>`).join('')}</select>`) +
-    `<div class="grid2">` + field('Paid with', `<select id="xmt">${PAY_METHODS.map(m => `<option ${m === x.method ? 'selected' : ''}>${m}</option>`).join('')}</select>`) +
+    `<div class="grid2">` + field('Payment type', `<select id="xmt">${PAY_METHODS.map(m => `<option ${m === x.method ? 'selected' : ''}>${m}</option>`).join('')}</select>`) +
     field('Note', `<input id="xnt" value="${esc(x.note)}" placeholder="What it was for">`) + `</div>` +
-    `<div class="grid2">` + field('Paid from', `<select id="xbk">${bankOptions(x.bank, 'Own money (out of pocket)')}</select>`) +
-    `<div id="xpbw">` + field('Whose money', `<input id="xpb" list="xpl" value="${esc(x.paidBy || '')}" placeholder="Ricardo Uribe"><datalist id="xpl">${peopleNames().map(n => `<option value="${esc(n)}">`).join('')}</datalist>`) + `</div>` +
+    `<div class="grid2">` + field('Paid with', `<select id="xbk">${paidOptions(paidValueOf(x))}</select>`) +
+    `<div id="xpbw">` + field('Whose money', x.paidBy && !moneyPeople().includes(x.paidBy) && !cardRule().all
+        ? `<select id="xpb"><option>${esc(x.paidBy)}</option>${moneyPeople().map(n => `<option>${esc(n)}</option>`).join('')}</select>`
+        : holderField('xpbf', x.paidBy || acting().name, 'xpb')) + `</div>` +
     `<div id="xckw">` + field('Check #', `<input id="xck" inputmode="numeric" value="${esc(x.checkNo || '')}">`) + `</div></div>` +
     (reviewing ? '' : rcHtml);
   const acts = el('div', 'actions');
@@ -2049,7 +2148,7 @@ function expenseSheet(x, presetJob, opts) {
     if (busy) return toast('Still reading the receipt — one sec.', true);
     if (pending || scanned || removeReceipt) return toast('Save the new photo first, then split.', true);
     const form = { amount: r2($('#xam').value), account: $('#xac').value, job: $('#xjb').value, note: $('#xnt').value.trim(), vendor: $('#xvn').value.trim(),
-      date: $('#xdt').value || x.date, method: $('#xmt').value, bank: $('#xbk').value, paidBy: $('#xbk').value ? '' : $('#xpb').value.trim(),
+      date: $('#xdt').value || x.date, method: $('#xmt').value, bank: readPaid().bank, paidBy: readPaid().paidBy,
       checkNo: $('#xmt').value === 'Check' ? $('#xck').value.trim().replace(/^#/, '') : (x.checkNo || '') };
     closeSheet(); setTimeout(() => splitSheet(x, form), 250);
   }, 'ghost'));
@@ -2062,7 +2161,9 @@ function expenseSheet(x, presetJob, opts) {
     if (!x.account) return toast('Pick the account to book it to.', true);
     x.date = $('#xdt').value || today(); x.vendor = $('#xvn').value.trim();
     x.method = $('#xmt').value; x.job = $('#xjb').value; x.note = $('#xnt').value.trim();
-    x.bank = $('#xbk').value; x.paidBy = x.bank ? '' : $('#xpb').value.trim(); x.checkNo = x.method === 'Check' ? $('#xck').value.trim().replace(/^#/, '') : (x.checkNo || '');
+    const pd = readPaid();
+    x.card = pd.card || (x.cardHidden ? '' : lastCard) || '';
+    x.bank = pd.bank; x.paidBy = pd.paidBy; x.checkNo = x.method === 'Check' ? $('#xck').value.trim().replace(/^#/, '') : (x.checkNo || '');
     x.status = 'Booked';
     if (pending || scanned) { x.receipt = true; x.file = true; RECEIPTS[x.id] = preview; removeReceipt = false; }
     if (removeReceipt) { x.receipt = false; delete RECEIPTS[x.id]; }
@@ -2085,7 +2186,7 @@ function expenseSheet(x, presetJob, opts) {
     enqueue('deleteExpense', { id: x.id }, 'Expense'); render();
   }, true), 'ghost dangertext'));
   b.appendChild(acts);
-  openSheet(reviewing ? 'Review receipt · ' + BIZ_NAMES[x.business || BIZ] : isNew ? 'New expense · ' + BIZ_NAMES[x.business || BIZ] : 'Expense', b);
+  openSheet(reviewing ? 'Review receipt · ' + BIZ_NAMES[x.business || BIZ] : isNew ? (opts.noReceipt ? 'No receipt · ' : 'New expense · ') + BIZ_NAMES[x.business || BIZ] : 'Expense', b);
 
   // account suggestion from the vendor's history
   const hint = $('#xah');
@@ -2114,9 +2215,11 @@ function expenseSheet(x, presetJob, opts) {
   }
   b.addEventListener('input', e => { if (e.target.id) touched[e.target.id] = true; if (e.target.id === 'xvn') suggest(); if (['xvn', 'xam', 'xdt'].includes(e.target.id)) paintDup(); });
   b.addEventListener('change', e => { if (e.target.id) touched[e.target.id] = true; if (e.target.id === 'xac') hint.textContent = '';
-    if (e.target.id === 'xmt' && $('#xmt').value === 'Check' && !$('#xbk').value && !touched.xbk) $('#xbk').value = defaultBank();
+    if (e.target.id === 'xmt' && $('#xmt').value === 'Check' && !$('#xbk').value.startsWith('b:') && !touched.xbk && defaultBank()) $('#xbk').value = 'b:' + defaultBank();
+    if (e.target.id === 'xbk') { const v = $('#xbk').value; if (v.startsWith('c:') && $('#xmt').value !== 'Card') $('#xmt').value = 'Card'; }
     if (['xmt', 'xbk'].includes(e.target.id)) paintPaid(); });
   function paintPaid() { $('#xpbw').classList.toggle('hide', !!$('#xbk').value); $('#xckw').classList.toggle('hide', $('#xmt').value !== 'Check'); }
+  function readPaid() { return readPaidValue($('#xbk').value, $('#xpb').value.trim()); }
   paintPaid();
 
   const rc = $('#xrc'), fileIn = $('#xfile');
@@ -2137,6 +2240,8 @@ function expenseSheet(x, presetJob, opts) {
     if (shown || (x.receipt && !removeReceipt)) {
       if (!shown && !x.file && x.link) row.appendChild(btn('Open receipt in Drive', () => window.open(x.link, '_blank'), 'ghost'));
       else if (!shown) row.appendChild(btn('View receipt', () => loadReceipt(), 'ghost'));
+      if (!busy && ((scanned && readFailed) || (!scanned && reviewing && x.file && !x.scanned)))
+        row.appendChild(btn('↻ Read again', () => readNow(), 'ghost'));
       row.appendChild(btn('Replace photo', () => fileIn.click(), 'ghost'));
       row.appendChild(btn('Remove', () => { pending = null; scanned = null; preview = null; status = ''; removeReceipt = true; paintReceipt(); }, 'ghost dangertext'));
     } else {
@@ -2173,29 +2278,67 @@ function expenseSheet(x, presetJob, opts) {
     if (!navigator.onLine) {
       pending = img; status = 'No signal — the photo uploads to Drive when you save. Type the details.'; paintReceipt(); return;
     }
-    busy = true; status = 'Saving to Drive and reading the receipt…'; paintReceipt();
+    // 1) save the photo first …
+    busy = true; status = 'Saving the photo to Drive…'; paintReceipt();
     try {
-      const r = await call('scanReceipt', { business: x.business || BIZ, image: { data: img.data, type: img.type }, hash, id: x.id });
-      scanned = { fileId: r.fileId, text: r.text || '' };
-      serverDups = r.duplicates || [];
-      const set = (id, val) => { const n = $('#' + id); if (n && val && !touched[id]) n.value = val; };
-      set('xam', r.total ? r.total.toFixed(2) : '');
-      set('xvn', r.vendor);
-      if (r.date) set('xdt', r.date);
-      if (r.account) set('xac', r.account);
-      if (r.method) set('xmt', r.method);
-      suggest();
-      const got = [r.vendor, r.total ? money(r.total) : '', r.date ? fmtDate(r.date) : ''].filter(Boolean);
-      status = !r.read ? '✓ Saved to Drive. Couldn’t read the text — type the details.'
-        : got.length ? '✓ Saved to Drive · read ' + got.join(' · ') + '. Check it, then save.'
-        : '✓ Saved to Drive. Couldn’t find a total — type the details.';
+      const up = await call('uploadReceipt', { business: x.business || BIZ, image: { data: img.data, type: img.type }, hash });
+      scanned = { fileId: up.fileId, text: '' };
     } catch (e) {
-      pending = img;
+      pending = img; busy = false;
       status = 'Couldn’t reach the server — the photo uploads when you save. Type the details.';
+      paintReceipt(); return;
+    }
+    // 2) … then read it
+    await readNow();
+  };
+  async function readNow() {
+    busy = true; readFailed = false;
+    status = scanned ? '✓ Saved to Drive. Reading it…' : 'Reading the receipt…'; paintReceipt();
+    try {
+      const r = await call('readReceipt', scanned ? { fileId: scanned.fileId, business: x.business || BIZ, hash, id: x.id } : { id: x.id });
+      applyRead(r);
+    } catch (e) {
+      readFailed = true;
+      status = '✓ Photo saved. Couldn’t read it — type the details or tap Read again.';
     }
     busy = false; paintReceipt(); paintDup();
-  };
+  }
+  function applyRead(r) {
+    if (scanned) scanned.text = r.text || '';
+    if (r.expense) { x.scanned = true; upsertLocal(biz().expenses, Object.assign({}, expensesAll().find(e => e.id === x.id) || {}, r.expense)); saveLocal(); }
+    serverDups = r.duplicates || [];
+    const set = (id, val) => { const n = $('#' + id); if (n && val && !touched[id] && (!n.value || id === 'xdt' || reviewing)) n.value = val; };
+    set('xam', r.total ? r.total.toFixed(2) : '');
+    set('xvn', r.vendor);
+    if (r.date) set('xdt', r.date);
+    if (r.account) set('xac', r.account);
+    if (r.method) set('xmt', r.method);
+    suggest();
+    if (r.card && !r.cardHidden) { lastCard = r.card; applyCard(r.card, r.cardInfo); }
+    readFailed = !r.read;
+    const got = [r.vendor, r.total ? money(r.total) : '', r.date ? fmtDate(r.date) : ''].filter(Boolean);
+    status = !r.read ? '✓ Photo saved. Couldn’t read the text — type the details or tap Read again.'
+      : (got.length ? '✓ Saved to Drive · read ' + got.join(' · ') : '✓ Saved to Drive. Couldn’t find a total — type it in') +
+        (r.card ? ' · card ••' + r.card + (r.cardInfo ? ' (' + r.cardInfo.holder + ')' : '') : '') + '. Check it, then save.';
+  }
+  /* whose card: fill "Paid from" from a known card, or ask once */
+  function applyCard(last4, info) {
+    info = info || cardByLast4(last4, x.business || BIZ);
+    const box = $('#xcard'); if (!box) return;
+    if (info) {
+      const known = cardsOf(x.business || BIZ).find(k => k.last4 === last4) || info;
+      if (!touched.xbk) { if (!cardsOf().find(k => k.id === known.id)) { if (!biz().cards) biz().cards = []; biz().cards.push(known); $('#xbk').innerHTML = paidOptions(''); }
+        $('#xbk').value = 'c:' + known.id; if (!touched.xmt) $('#xmt').value = 'Card'; }
+      paintPaid();
+      box.innerHTML = `<div class="cardok">💳 ${esc(cardLabel(known))} · ${esc(known.bank ? 'charges come from ' + bankLabel(bankById(known.bank)) : 'their own money')}</div>`;
+      return;
+    }
+    box.innerHTML = cardAskHtml(last4);
+    wireCardAsk(box, last4, x.business || BIZ, c => { $('#xbk').innerHTML = paidOptions(''); applyCard(last4, c); });
+  }
   paintReceipt(); paintDup(); suggest();
+  if (x.card && !x.cardHidden && (reviewing || !cardByLast4(x.card, x.business || BIZ))) applyCard(x.card, null);
+  if (noRc) { $('#xrcshow').onclick = e => { e.target.remove(); $('#xrcw').classList.remove('hide'); fileIn.click(); }; setTimeout(() => $('#xam').focus(), 300); }
   if (opts.scan) fileIn.click();                       // straight to camera / photo library
   else if (isNew) setTimeout(() => { const a = $('#xam'); if (a) a.focus(); }, 250);
 }
@@ -2664,7 +2807,7 @@ function vPnl(v) {
   c.innerHTML = h;
   c.querySelectorAll('[data-acct]').forEach(r => r.onclick = () => {
     EXP.cat = r.dataset.acct; EXP.period = ['month', 'last', 'year'].includes(PNL.period) ? PNL.period : 'all';
-    VIEW = 'expenses'; ROUTES = []; render(); window.scrollTo(0, 0);
+    go('allexp', 'all');
   });
   v.appendChild(c);
 
@@ -2786,6 +2929,89 @@ function bankState(b, flows, asOf) {
   return { base, bal, owed: isCard(b) ? r2(-bal) : 0, flows: mine };
 }
 
+/* ---- cards: last 4 → whose card, who may use it, and where its charges come from ----
+   The server only sends cards this person may use (their own, plus the people in their Team CARDS column, or everyone). */
+const cardsOf = b => (biz().cards || []).filter(c => !c.business || c.business === (b || BIZ));
+const cardByLast4 = (l4, b) => cardsOf(b).find(c => c.last4 === l4) || null;
+const cardRule = () => (biz().cardRule || { all: true, of: [] });
+const teamByEmail = e => (DATA.team || []).find(t => t.email === e);
+/* People whose cards / own money this person can log: themselves, the people they're allowed, or anyone. */
+function moneyPeople() {
+  const r = cardRule(), mine = acting().name;
+  if (r.all) return [...new Set([mine].concat(peopleNames()))].filter(Boolean);
+  return [...new Set([mine].concat(r.of.map(e => (teamByEmail(e) || {}).name)))].filter(Boolean);
+}
+const firstName = n => String(n || '').split(' ')[0];
+const cardLabel = c => (c.name || 'Card') + ' ••' + c.last4 + (c.holder ? ' · ' + firstName(c.holder) : '');
+function cardBit(r) { return r.card && !r.cardHidden ? ` · ••${esc(r.card)}${r.cardInfo ? ' ' + esc(firstName(r.cardInfo.holder)) : ' <span class="pill warn">whose card?</span>'}` : ''; }
+function holderField(cls, val, id) {
+  const ppl = moneyPeople();
+  if (cardRule().all) return `<input class="${cls}" ${id ? `id="${id}"` : ''} list="${cls}l" value="${esc(val || '')}" placeholder="Ricardo Uribe"><datalist id="${cls}l">${ppl.map(n => `<option value="${esc(n)}">`).join('')}</datalist>`;
+  return `<select class="${cls}" ${id ? `id="${id}"` : ''}>${ppl.map(n => `<option ${n === val ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
+}
+function cardAskHtml(last4) {
+  return `<div class="cardask"><b>💳 Whose card is ••${esc(last4)}?</b><div class="meta">Set it once — every receipt on this card fills in by itself after this.</div>
+    <div class="grid2" style="margin-top:8px">${field('Cardholder', holderField('ch', ''))}
+    ${field('Card name', `<input class="cn" placeholder="Apple Card, Chase…">`)}</div>
+    ${field('Charges come from', `<select class="cb">${bankOptions('', 'Their own money (pay them back)')}</select>`)}
+    <button type="button" class="btn sm csave">Save card</button></div>`;
+}
+function ownerOf(holder) { const t = (DATA.team || []).find(k => k.name.toLowerCase() === String(holder).toLowerCase()); return t ? t.email : ''; }
+function storeCard(c) {
+  if (!biz().cards) biz().cards = [];
+  biz().cards = biz().cards.filter(k => k.id !== c.id && k.last4 !== c.last4); biz().cards.push(c);
+  expensesAll().filter(e => e.status === 'Review' && e.card === c.last4 && (!c.business || (e.business || 'uffg') === c.business))
+    .forEach(e => { e.bank = c.bank; e.paidBy = c.bank ? '' : c.holder; });
+  saveLocal(); enqueue('saveCard', c, 'Card ••' + c.last4);
+}
+function wireCardAsk(box, last4, business, done) {
+  box.querySelector('.csave').onclick = () => {
+    const holder = box.querySelector('.ch').value.trim(), bank = box.querySelector('.cb').value, name = box.querySelector('.cn').value.trim();
+    if (!holder) return toast('Whose card is it?', true);
+    const c = { id: uid(), business: bank ? business : '', last4, holder, owner: ownerOf(holder), name, bank, note: '' };
+    storeCard(c); toast('Card ••' + last4 + ' saved'); done && done(c);
+  };
+}
+function cardSheet(c) {
+  const isNew = !c || !c.holder;
+  c = c ? clone(c) : { id: uid(), business: '', last4: '', holder: '', name: '', bank: '', note: '' };
+  const f = el('div');
+  f.innerHTML = `<div class="grid2">` + field('Card name', `<input id="cnm2" value="${esc(c.name || '')}" placeholder="Apple Card, Chase…">`) +
+    field('Last 4 digits', `<input id="cl4" inputmode="numeric" maxlength="4" value="${esc(c.last4)}" placeholder="7154">`) + `</div>` +
+    field('Cardholder', holderField('cho', c.holder || acting().name, 'cho')) +
+    field('Charges come from', `<select id="cbk2">${bankOptions(c.bank, 'Their own money (pay them back)')}</select>`) +
+    `<div class="hint" style="margin:-6px 0 10px">Pick the business card or checking account it draws from. “Their own money” means the business owes them back. Only the cardholder${cardRule().all ? '' : ' and people allowed to use their cards'} see this card.</div>` +
+    field('Note', `<input id="cno2" value="${esc(c.note)}" placeholder="Debit card on checking…">`);
+  const acts = el('div', 'actions');
+  acts.appendChild(btn('Save card', () => {
+    c.last4 = $('#cl4').value.replace(/\D/g, '').slice(-4); c.holder = $('#cho').value.trim(); c.bank = $('#cbk2').value; c.note = $('#cno2').value.trim();
+    c.name = $('#cnm2').value.trim(); c.owner = ownerOf(c.holder); c.business = c.bank ? BIZ : '';
+    if (c.last4.length !== 4) return toast('Enter the last 4 digits.', true);
+    if (!c.holder) return toast('Whose card is it?', true);
+    storeCard(c); closeSheet(); toast('Saved'); render();
+  }));
+  if (!isNew) acts.appendChild(btn('Remove card', () => { biz().cards = (biz().cards || []).filter(k => k.id !== c.id); saveLocal(); enqueue('archiveCard', { id: c.id }, 'Card'); closeSheet(); render(); }, 'ghost dangertext'));
+  f.appendChild(acts);
+  openSheet(isNew ? 'Add a card' : cardLabel(c), f);
+}
+/* "Paid with": a card, a bank account, or someone's own money. Value: c:<card id> | b:<bank id> | '' */
+function paidOptions(sel) {
+  const cs = cardsOf(), bs = banksOf();
+  return (cs.length ? `<optgroup label="Cards">${cs.map(c => `<option value="c:${esc(c.id)}" ${sel === 'c:' + c.id ? 'selected' : ''}>${esc(cardLabel(c))}</option>`).join('')}</optgroup>` : '') +
+    (bs.length ? `<optgroup label="Bank accounts">${bs.map(b => `<option value="b:${esc(b.id)}" ${sel === 'b:' + b.id ? 'selected' : ''}>${esc(bankLabel(b) + (isCard(b) ? ' (card)' : ''))}</option>`).join('')}</optgroup>` : '') +
+    `<option value="" ${sel ? '' : 'selected'}>Own money (cash, no card)</option>`;
+}
+function paidValueOf(x) {
+  const c = x.card && cardByLast4(x.card, x.business || BIZ);
+  if (c && (c.bank || '') === (x.bank || '') && (c.bank || c.holder === x.paidBy)) return 'c:' + c.id;
+  return x.bank ? 'b:' + x.bank : '';
+}
+function readPaidValue(v, whose) {
+  if (v.startsWith('c:')) { const c = cardsOf().find(k => k.id === v.slice(2)) || {}; return { card: c.last4 || '', bank: c.bank || '', paidBy: c.bank ? '' : (c.holder || '') }; }
+  if (v.startsWith('b:')) return { card: '', bank: v.slice(2), paidBy: '' };
+  return { card: '', bank: '', paidBy: whose };
+}
+
 /* ---- Bank & cards list ---- */
 function vBanks(v) {
   const flows = bankFlows(BIZ), list = banksAll();
@@ -2797,9 +3023,18 @@ function vBanks(v) {
       ${need ? '<div class="meta warntext">Set the starting balance to see the real balance</div>' : ''}</div>
       <div class="rcol"><div class="amt ${st.bal < 0 && !isCard(b) ? 'negtext' : ''}">${money(isCard(b) ? st.owed : st.bal)}</div><div class="meta">${isCard(b) ? 'owed' : 'balance'}</div></div></div>`, () => go('bank', b.id)));
   });
-  const add = btn('+ Add a bank account or card', () => bankSheet(null), 'ghost'); add.classList.add('wide'); add.style.marginTop = '8px';
+  const add = btn('+ Add a bank account or card account', () => bankSheet(null), 'ghost'); add.classList.add('wide'); add.style.marginTop = '8px';
   v.appendChild(add);
   v.appendChild(el('div', 'sub', 'Checks, deposits and card charges land here when you pick the account on an expense or payment.'));
+  v.appendChild(el('h2', null, 'Whose card is it?'));
+  v.appendChild(el('div', 'sub', 'Receipts show the card’s last 4 digits. Set each card once and every receipt on it knows who paid.'));
+  const seen = [...new Set(expenses().map(x => x.card).filter(Boolean))].filter(l4 => !cardByLast4(l4));
+  cardsOf().forEach(c => v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">💳 ${esc(c.name || 'Card')} ••${esc(c.last4)} · ${esc(c.holder)}</div>
+      <div class="meta">${esc(c.bank ? 'Charges come from ' + bankLabel(bankById(c.bank)) : 'Their own money — the business pays them back')}${c.note ? ' · ' + esc(c.note) : ''}</div></div><span class="chev">›</span></div>`, () => cardSheet(c))));
+  seen.forEach(l4 => v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">💳 ••${esc(l4)} · <span class="warntext">not set up</span></div>
+      <div class="meta">Seen on ${expenses().filter(x => x.card === l4).length} receipt(s). Tap to say whose it is.</div></div><span class="chev">›</span></div>`, () => cardSheet({ id: uid(), business: '', last4: l4, holder: '', name: '', bank: '', note: '' }))));
+  const addc = btn('+ Add a card', () => cardSheet(null), 'ghost'); addc.classList.add('wide');
+  v.appendChild(addc);
 }
 
 function bankSheet(b) {
@@ -3040,7 +3275,7 @@ function vVendors(v) {
   const top = Object.values(paid).sort((a, b) => b.amt - a.amt).slice(0, 15);
   if (!top.length) v.appendChild(el('div', 'empty sm', 'No expenses this year yet.'));
   top.forEach(p => v.appendChild(card(`<div class="row"><div class="grow"><div class="ttl">${esc(p.name)}</div><div class="meta">${p.n} expense${p.n === 1 ? '' : 's'}${vendorByName(p.name) ? '' : ''}</div></div><div class="amt">${money(p.amt)}</div></div>`,
-    () => { FILTER.q = p.name; EXP.period = 'year'; EXP.cat = ''; VIEW = 'expenses'; ROUTES = []; render(); })));
+    () => { FILTER.q = p.name; EXP.period = 'year'; EXP.cat = ''; go('allexp', 'all'); })));
   if (others.length) {
     v.appendChild(el('h2', null, 'Saved vendors'));
     others.forEach(s => v.appendChild(card(`<div class="ttl">${esc(s.name)}</div><div class="meta">${esc([s.phone, s.email].filter(Boolean).join(' · ') || 'Vendor')}</div>`, () => vendorSheet(s))));
