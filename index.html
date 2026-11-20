@@ -298,6 +298,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
 @supports (height:100lvh){#app main,#auth main{min-height:calc(100lvh + 2px)}}
 .tabs{padding-bottom:max(6px, calc(env(safe-area-inset-bottom) - 14px))}
 .tabs button{padding-bottom:5px}
+.tabs button:first-child{padding-left:9px}
 .docbar{padding-bottom:max(10px, calc(env(safe-area-inset-bottom) - 8px))}
 </style>
 </head>
@@ -368,7 +369,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
 const $  = s => document.querySelector(s);
 const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const APP_VERSION = '2.8.1';
+const APP_VERSION = '2.8.2';
 const uid = () => (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
 const LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
