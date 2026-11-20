@@ -1,5 +1,5 @@
 /* Bump CACHE every time index.html changes, or phones keep the old app. */
-const CACHE = 'uffg-v15';
+const CACHE = 'uffg-v16';
 const ASSETS = [
   './', './index.html', './config.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'

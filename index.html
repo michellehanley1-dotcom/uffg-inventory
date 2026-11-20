@@ -368,7 +368,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
 const $  = s => document.querySelector(s);
 const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const APP_VERSION = '2.8.0';
+const APP_VERSION = '2.8.1';
 const uid = () => (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
 const LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -1171,6 +1171,7 @@ function custBalance(cid) {
     .reduce((s, d) => s + balance(d), 0));
 }
 /* Contract value of an estimate = estimate total + its approved change orders. */
+const approvedCOs = est => changeOrdersOf(est.id).filter(c => c.status === 'Approved');
 function contractTotal(est) {
   return r2(totals(est).total + changeOrdersOf(est.id).filter(c => c.status === 'Approved').reduce((s, c) => s + totals(c).total, 0));
 }
@@ -1331,7 +1332,8 @@ const byNewest = (a, b) => (b.date || '').localeCompare(a.date || '') || (b.crea
 function docCard(d) {
   const st = shownStatus(d);
   const right = d.type === 'invoice' && (st === 'Partial' || st === 'Sent' || st === 'Overdue')
-    ? `<div class="amt">${money(balance(d))}</div><div class="meta r">due</div>` : `<div class="amt">${money(totals(d).total)}</div>`;
+    ? `<div class="amt">${money(balance(d))}</div><div class="meta r">due</div>`
+    : d.type === 'estimate' && approvedCOs(d).length ? `<div class="amt">${money(contractTotal(d))}</div><div class="meta r">with changes</div>` : `<div class="amt">${money(totals(d).total)}</div>`;
   const cos = d.type === 'estimate' ? changeOrdersOf(d.id).length : 0;
   return card(`<div class="row"><div class="grow">
       <div class="ttl">${esc(custName(d.customer))}</div>
@@ -1597,6 +1599,10 @@ function paintTotals() {
   if (t.tax) rows.push(['Tax (' + d.taxRate + '%)', money(t.tax)]);
   rows.push(['Total', money(t.total), 'big']);
   if (d.type === 'estimate' && Number(d.deposit)) rows.push(['Deposit (' + d.deposit + '%)', money(r2(t.total * d.deposit / 100))]);
+  if (d.type === 'estimate' && !d._new && approvedCOs(d).length) {
+    approvedCOs(d).forEach(c => rows.push(['+ ' + (c.number || 'Change order') + (c.title ? ' · ' + c.title : ''), money(totals(c).total)]));
+    rows.push(['Contract total', money(r2(t.total + approvedCOs(d).reduce((a, c) => a + totals(c).total, 0))), 'big']);
+  }
   if (d.type === 'invoice' && !d._new) {
     rows.push(['Paid', '-' + money(d.paid || 0)]);
     rows.push(['Balance due', money(r2(t.total - (d.paid || 0))), 'big']);
@@ -3653,6 +3659,13 @@ function buildPdf(d) {
   if (t.tax) rows.push(['Tax (' + d.taxRate + '%)', money(t.tax)]);
   rows.push([d.type === 'change' ? 'This change order' : 'Total', money(t.total), 'bold']);
   if (d.type === 'estimate' && Number(d.deposit)) rows.push(['Deposit due to start (' + d.deposit + '%)', money(r2(t.total * d.deposit / 100))]);
+  const cosA = d.type === 'estimate' ? approvedCOs(d).slice().sort((a, b) => (a.number || '').localeCompare(b.number || '', undefined, { numeric: true })) : [];
+  if (cosA.length) {
+    const fit = str => { str = pdfClean(str); while (str.length > 8 && textW(str, 10, false) > 165) str = str.slice(0, -2); return str; };
+    rows.push(['Approved change orders:', '']);
+    cosA.forEach(c => rows.push([fit('+ ' + (c.number || '').replace(/^.*-CO/, 'CO') + (c.title ? ' ' + c.title.replace(/^change order\s*/i, '') : '')), money(totals(c).total)]));
+    rows.push(['Contract total', money(r2(t.total + cosA.reduce((a, c) => a + totals(c).total, 0))), 'big']);
+  }
   if (d.type === 'invoice') { rows.push(['Paid', '-' + money(d.paid || 0)]); rows.push(['Balance due', money(r2(t.total - (d.paid || 0))), 'big']); }
   if (parent) {
     const prev = changeOrdersOf(parent.id).filter(c => c.id !== d.id && c.status === 'Approved' && (!d.number || (c.number || '').localeCompare(d.number, undefined, { numeric: true }) < 0));
