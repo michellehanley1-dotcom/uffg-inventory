@@ -4,7 +4,7 @@
  * Columns are always found by header NAME, never by position.
  */
 
-var VERSION   = '2.7.1';
+var VERSION   = '2.8.0';
 var SHEET_ID  = ''; // leave blank to use the sheet this script is bound to
 var CODE_TTL  = 10 * 60 * 1000;        // 6-digit code lifetime
 var CODE_TRIES= 5;
@@ -13,7 +13,7 @@ var SESS_DAYS = 120;
 var BRAND     = 'UFFG Construction';
 
 var TABS = {
-  Team:      ['EMAIL','NAME','TRUCK/LOCATION','ROLE','BUSINESSES'],
+  Team:      ['EMAIL','NAME','TRUCK/LOCATION','ROLE','BUSINESSES','CARDS','HIDE FROM'],
   Locations: ['NAME','TYPE','ACTIVE'],
   Tools:     ['TOOL ID','NAME','BRAND','MODEL','STATUS','LOCATION','CHECKED OUT BY','CHECKED OUT AT','NOTES','UPDATED AT'],
   Parts:     ['PART','BRAND','UNIT','LOW TARGET'],
@@ -30,15 +30,16 @@ var TABS = {
   Payments:  ['ID','INVOICE','DATE','AMOUNT','METHOD','NOTE','WHO','DELETED','BANK'],
   Expenses:  ['ID','BUSINESS','STATUS','DATE','VENDOR','ACCOUNT','AMOUNT','METHOD','JOB','NOTE','RECEIPT',
               'RECEIPT LINK','HASH','DUP OF','SCANNED','CREATED BY','CREATED','UPDATED','DELETED',
-              'BANK','PAID BY','CHECK NO','CHECK FILE','CHECK LINK','SPLIT'],
+              'BANK','PAID BY','CHECK NO','CHECK FILE','CHECK LINK','SPLIT','CARD'],
   Company:   ['KEY','VALUE'],
+  Cards:     ['ID','BUSINESS','LAST4','HOLDER','BANK','NOTE','ACTIVE','CREATED','OWNER','NAME'],
   Banks:     ['ID','BUSINESS','NAME','TYPE','INSTITUTION','LAST4','OPENING BALANCE','OPENING DATE','ACTIVE','CREATED'],
   Vendors:   ['ID','BUSINESS','NAME','TYPE','PHONE','EMAIL','NOTES','ACTIVE','CREATED'],
   Banking:   ['ID','BUSINESS','TYPE','DATE','AMOUNT','BANK','TO BANK','PERSON','NOTE','WHO','CREATED','DELETED']
 };
 
 /** Tabs stored as plain text so Sheets never turns "2026-11-13" or "1/2" into a date. */
-var TEXT_TABS = { Customers:1, Services:1, Docs:1, Payments:1, Expenses:1, Company:1, Banks:1, Vendors:1, Banking:1 };
+var TEXT_TABS = { Customers:1, Services:1, Docs:1, Payments:1, Expenses:1, Company:1, Banks:1, Vendors:1, Banking:1, Cards:1 };
 /** Columns kept as real numbers so the sheet can add them up. */
 var MONEY_COLS = { Expenses: { 'AMOUNT': 1 }, Payments: { 'AMOUNT': 1 }, Banking: { 'AMOUNT': 1 }, Banks: { 'OPENING BALANCE': 1 } };
 
@@ -155,12 +156,59 @@ function ensureHeaders_(name) {
   sh.getRange(1, col, 1, add.length).setValues([add]).setFontWeight('bold');
 }
 
+/** Team CARDS column: "All" = can use anyone's cards; otherwise names or emails of the people whose cards they may also use. Blank = only their own. */
+function cardRule_(v, team) {
+  var out = { all: false, of: [] };
+  norm_(v).split(/[,;\n]+/).map(lower_).filter(String).forEach(function (tok) {
+    if (tok === 'all' || tok === 'everyone' || tok === 'any') { out.all = true; return; }
+    var hit = team.filter(function (t) { var e = lower_(t['EMAIL']), n = lower_(t['NAME']); return e === tok || n === tok || n.split(' ')[0] === tok; })[0];
+    var em = hit ? lower_(hit['EMAIL']) : (tok.indexOf('@') > 0 ? tok : '');
+    if (em && out.of.indexOf(em) < 0) out.of.push(em);
+  });
+  return out;
+}
+
+/* ---- privacy: a Team row's HIDE FROM lists people who must never see that person's name or email ---- */
+var MASK = 'Team member';
+function hiddenFor_(viewer) {
+  if (!viewer || !viewer.email) return [];
+  var team = rows_('Team'), v = lower_(viewer.email), out = [];
+  team.forEach(function (t) {
+    if (lower_(t['EMAIL']) === v || !norm_(t['HIDE FROM'])) return;
+    var r = cardRule_(t['HIDE FROM'], team);
+    if (r.all || r.of.indexOf(v) >= 0) out.push({ email: lower_(t['EMAIL']), name: norm_(t['NAME']) });
+  });
+  return out;
+}
+function escRe_(x) { return String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+/** Replace hidden people's names and emails anywhere in a response. */
+function scrub_(data, hidden) {
+  if (!hidden || !hidden.length || data === null || data === undefined) return data;
+  var res = [];
+  hidden.forEach(function (h) {
+    if (h.email) res.push(new RegExp(escRe_(h.email), 'gi'));
+    if (h.name) {
+      res.push(new RegExp(escRe_(h.name), 'gi'));
+      var first = h.name.split(' ')[0]; if (first.length > 2) res.push(new RegExp('\\b' + escRe_(first) + '\\b', 'gi'));
+    }
+  });
+  var walk = function (o) {
+    if (typeof o === 'string') { res.forEach(function (re) { o = o.replace(re, MASK); }); return o; }
+    if (Array.isArray(o)) return o.map(walk);
+    if (o && typeof o === 'object' && !(o instanceof Date)) { var n = {}; for (var k in o) n[k] = walk(o[k]); return n; }
+    return o;
+  };
+  return walk(data);
+}
+
 function teamMember_(email) {
   var e = lower_(email);
   var t = rows_('Team');
   for (var i = 0; i < t.length; i++) {
     if (lower_(t[i]['EMAIL']) === e) {
+      var cr = cardRule_(t[i]['CARDS'], t);
       return {
+        cardsAll: cr.all, cardsOf: cr.of,
         email:    lower_(t[i]['EMAIL']),
         name:     norm_(t[i]['NAME']) || lower_(t[i]['EMAIL']),
         base:     norm_(t[i]['TRUCK/LOCATION']),
@@ -358,7 +406,9 @@ function bootstrap_(args, me) {
     locations: locs, tools: tools, parts: parts, stock: stock, log: log,
     statuses: STATUSES, serverTime: now_().toISOString()
   };
-  if (me.isManager && acting.isManager) out.biz = business_(acting.businesses);
+  if (me.isManager && acting.isManager) out.biz = business_(acting.businesses, acting);
+  var hid = hiddenFor_(acting).map(function (h) { return h.email; });
+  if (hid.length) out.team = out.team.filter(function (t) { return hid.indexOf(t.email) < 0; });
   return out;
 }
 
@@ -975,22 +1025,58 @@ function ocr_(blob) {
   }
 }
 
+/* Store names we recognize anywhere on the receipt. Multi-word names also match when OCR breaks them across lines. */
 var KNOWN_VENDORS = [
   ['home depot', 'The Home Depot', 'Job materials'], ["lowe's", "Lowe's", 'Job materials'], ['lowes', "Lowe's", 'Job materials'],
   ['menards', 'Menards', 'Job materials'], ['ace hardware', 'Ace Hardware', 'Job materials'], ['84 lumber', '84 Lumber', 'Job materials'],
   ['mccoy', "McCoy's", 'Job materials'], ['builders firstsource', 'Builders FirstSource', 'Job materials'], ['sherwin', 'Sherwin-Williams', 'Job materials'],
-  ['ferguson', 'Ferguson', 'Job materials'], ['fastenal', 'Fastenal', 'Job materials'], ['grainger', 'Grainger', 'Job materials'],
+  ['ferguson', 'Ferguson', 'Job materials'], ['fastenal', 'Fastenal', 'Job supplies & small tools'], ['grainger', 'Grainger', 'Job supplies & small tools'],
+  ['dynamic fastener', 'Dynamic Fastener', 'Job supplies & small tools'], ['mcmaster', 'McMaster-Carr', 'Job supplies & small tools'],
   ['metal mart', 'Metal Mart', 'Job materials'], ['metals depot', 'Metals Depot', 'Job materials'], ['tractor supply', 'Tractor Supply', 'Job materials'],
   ['harbor freight', 'Harbor Freight', 'Tools & small equipment'], ['northern tool', 'Northern Tool', 'Tools & small equipment'],
-  ['sunbelt', 'Sunbelt Rentals', 'Equipment rental'], ['united rentals', 'United Rentals', 'Equipment rental'], ['herc', 'Herc Rentals', 'Equipment rental'],
+  ['sunbelt', 'Sunbelt Rentals', 'Equipment rental'], ['united rentals', 'United Rentals', 'Equipment rental'], ['herc rentals', 'Herc Rentals', 'Equipment rental'],
   ['buc-ee', "Buc-ee's", 'Fuel'], ['bucee', "Buc-ee's", 'Fuel'], ['shell', 'Shell', 'Fuel'], ['exxon', 'Exxon', 'Fuel'], ['mobil', 'Mobil', 'Fuel'],
-  ['chevron', 'Chevron', 'Fuel'], ['valero', 'Valero', 'Fuel'], ['quiktrip', 'QuikTrip', 'Fuel'], ['qt ', 'QuikTrip', 'Fuel'], ['murphy', 'Murphy USA', 'Fuel'],
-  ['circle k', 'Circle K', 'Fuel'], ['7-eleven', '7-Eleven', 'Fuel'], ['racetrac', 'RaceTrac', 'Fuel'], ['love\'s', "Love's", 'Fuel'], ['pilot', 'Pilot', 'Fuel'],
-  ['sunoco', 'Sunoco', 'Fuel'], ['conoco', 'Conoco', 'Fuel'], ['phillips 66', 'Phillips 66', 'Fuel'], ['stripes', 'Stripes', 'Fuel'],
-  ["o'reilly", "O'Reilly Auto Parts", 'Vehicle repairs & maintenance'], ['autozone', 'AutoZone', 'Vehicle repairs & maintenance'], ['advance auto', 'Advance Auto Parts', 'Vehicle repairs & maintenance'],
-  ['walmart', 'Walmart', 'Job materials'], ['costco', 'Costco', 'Job materials'], ["sam's club", "Sam's Club", 'Job materials'],
-  ['whataburger', 'Whataburger', 'Meals'], ['mcdonald', "McDonald's", 'Meals'], ['taco', '', 'Meals'], ['chick-fil-a', 'Chick-fil-A', 'Meals']
+  ['chevron', 'Chevron', 'Fuel'], ['valero', 'Valero', 'Fuel'], ['quiktrip', 'QuikTrip', 'Fuel'], ['quik trip', 'QuikTrip', 'Fuel'], ['murphy usa', 'Murphy USA', 'Fuel'],
+  ['circle k', 'Circle K', 'Fuel'], ['7-eleven', '7-Eleven', 'Fuel'], ['racetrac', 'RaceTrac', 'Fuel'], ["love's travel", "Love's", 'Fuel'], ['pilot', 'Pilot', 'Fuel'],
+  ['flying j', 'Flying J', 'Fuel'], ['sunoco', 'Sunoco', 'Fuel'], ['conoco', 'Conoco', 'Fuel'], ['phillips 66', 'Phillips 66', 'Fuel'], ['stripes', 'Stripes', 'Fuel'],
+  ['speedway', 'Speedway', 'Fuel'], ['wawa', 'Wawa', 'Fuel'],
+  ["o'reilly", "O'Reilly Auto Parts", 'Vehicle repairs & maintenance'], ['autozone', 'AutoZone', 'Vehicle repairs & maintenance'],
+  ['advance auto', 'Advance Auto Parts', 'Vehicle repairs & maintenance'], ['napa auto', 'NAPA Auto Parts', 'Vehicle repairs & maintenance'],
+  ['walmart', 'Walmart', ''], ['costco', 'Costco', ''], ["sam's club", "Sam's Club", ''], ['target', 'Target', ''],
+  ['dollar tree', 'Dollar Tree', ''], ['dollar general', 'Dollar General', ''], ['family dollar', 'Family Dollar', ''],
+  ['albertsons', 'Albertsons', 'Meals'], ['kroger', 'Kroger', 'Meals'], ['h-e-b', 'H-E-B', 'Meals'], ['tom thumb', 'Tom Thumb', 'Meals'],
+  ['fiesta mart', 'Fiesta Mart', 'Meals'], ['michoacana', 'La Michoacana', 'Meals'], ['aldi', 'Aldi', 'Meals'], ['whole foods', 'Whole Foods', 'Meals'],
+  ['whataburger', 'Whataburger', 'Meals'], ['mcdonald', "McDonald's", 'Meals'], ['chick-fil-a', 'Chick-fil-A', 'Meals'], ['panda express', 'Panda Express', 'Meals'],
+  ['papa john', "Papa John's", 'Meals'], ["chuy's", "Chuy's", 'Meals'], ['starbucks', 'Starbucks', 'Meals'], ['taco bell', 'Taco Bell', 'Meals'],
+  ['subway', 'Subway', 'Meals'], ["wendy's", "Wendy's", 'Meals'], ['jack in the box', 'Jack in the Box', 'Meals'], ['popeyes', 'Popeyes', 'Meals'],
+  ['sonic drive', 'Sonic', 'Meals'], ['raising cane', "Raising Cane's", 'Meals'], ['taco cabana', 'Taco Cabana', 'Meals'],
+  ['airbnb', 'Airbnb', 'Job travel & lodging'], ['office depot', 'Office Depot', 'Office, software & phone'], ['staples', 'Staples', 'Office, software & phone']
 ];
+var VENDOR_SKIP = /(checker|cashier|served by|server|your (host|associate)|welcome|thank|thanks|survey|feedback|receipt|store\s*(#|no|num)|st\s*#|register|terminal|trans(action)?\b|tran #|date|time|www|\.com|tel\b|phone|fax|order\b|invoice|ticket|guest|table|visit|open\s+\d|hours|customer copy|merchant|sale\b|purchase|approved|auth|ref\b|copy)/i;
+var VENDOR_STOP = { the: 1, inc: 1, llc: 1, co: 1, store: 1, shop: 1, market: 1, and: 1, of: 1, a: 1, receipt: 1, sale: 1 };
+
+/** Best guess at the store name. Known stores first (anywhere on the receipt), then the first real name line at the top. */
+function parseVendor_(t, lines) {
+  var low = t.toLowerCase(), flat = low.replace(/[^a-z0-9]/g, '');
+  for (var i = 0; i < KNOWN_VENDORS.length; i++) {
+    var k = KNOWN_VENDORS[i][0], hit;
+    if (/[\s'-]/.test(k)) hit = flat.indexOf(k.replace(/[^a-z0-9]/g, '')) >= 0;           // "THE HOME\nDEPOT" still matches
+    else hit = new RegExp('\\b' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(low);
+    if (hit) return { vendor: KNOWN_VENDORS[i][1], account: KNOWN_VENDORS[i][2] };
+  }
+  for (var j = 0; j < Math.min(lines.length, 10); j++) {
+    var l = lines[j].replace(/[^\w&'.\- ]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!l || VENDOR_SKIP.test(l)) continue;
+    if (/\d{3}[-.)\s]*\d{3}[-.\s]*\d{4}/.test(l) || /^\d+\s+\w/.test(l) || /\b[A-Z]{2}\s+\d{5}\b/.test(l) || /\d{5}(-\d{4})?$/.test(l)) continue;
+    var words = l.split(' ').filter(function (w) { return /[a-z]{2,}/i.test(w) && !VENDOR_STOP[w.toLowerCase()]; });
+    if (!words.length || (words.length === 1 && words[0].length < 4)) continue;
+    if ((l.match(/\d/g) || []).length > l.length / 3) continue;
+    var name = l.slice(0, 60);
+    if (name === name.toUpperCase()) name = name.toLowerCase().replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); });
+    return { vendor: name, account: '' };
+  }
+  return { vendor: '', account: '' };
+}
 
 /** Pull vendor, date, total, payment type out of OCR text. Best guess; the person confirms before saving. */
 function parseReceipt_(text) {
@@ -999,17 +1085,9 @@ function parseReceipt_(text) {
   if (!t.trim()) return out;
   var low = t.toLowerCase();
   var lines = t.split('\n').map(function (l) { return l.trim(); }).filter(String);
-
-  for (var i = 0; i < KNOWN_VENDORS.length; i++) {
-    if (low.indexOf(KNOWN_VENDORS[i][0]) >= 0) { out.vendor = KNOWN_VENDORS[i][1]; out.account = KNOWN_VENDORS[i][2]; break; }
-  }
-  if (!out.vendor) {
-    for (var j = 0; j < Math.min(lines.length, 8); j++) {
-      var l = lines[j];
-      if (/[a-z]{3,}/i.test(l) && !/\d{3}[-.)\s]*\d{3}[-.\s]*\d{4}/.test(l) && !/^\d+\s+\w/.test(l) &&
-          !/(receipt|welcome|store|thank|invoice|order|date|www\.|\.com|tel|phone)/i.test(l)) { out.vendor = l.replace(/[^\w&'.\- ]/g, '').trim().slice(0, 60); break; }
-    }
-  }
+  var vv = parseVendor_(t, lines);
+  out.vendor = vv.vendor; out.account = vv.account;
+  if (!out.account && /(taco|taqueria|grill|cafe|café|restaurant|pizza|burger|bbq|kitchen|diner|donut|bakery|cantina|wings)/i.test(out.vendor)) out.account = 'Meals';
 
   var amt = /\$?\s*(\d{1,3}(?:,\d{3})+|\d+)\.(\d{2})(?!\d)/g;
   var amountsIn = function (l) { var a = [], m; amt.lastIndex = 0; while ((m = amt.exec(l))) a.push(Number(m[1].replace(/,/g, '') + '.' + m[2])); return a; };
@@ -1103,38 +1181,148 @@ function expenseOut_(x) {
            hash: norm_(x['HASH']), dupOf: norm_(x['DUP OF']), scanned: !!norm_(x['SCANNED']),
            createdBy: norm_(x['CREATED BY']), created: norm_(x['CREATED']),
            file: !!norm_(x['RECEIPT']), bank: norm_(x['BANK']), paidBy: norm_(x['PAID BY']), checkNo: norm_(x['CHECK NO']),
-           checkFile: !!norm_(x['CHECK FILE']), checkLink: norm_(x['CHECK LINK']), split: norm_(x['SPLIT']) };
+           checkFile: !!norm_(x['CHECK FILE']), checkLink: norm_(x['CHECK LINK']), split: norm_(x['SPLIT']),
+           card: norm_(x['CARD']) || ((norm_(x['NOTE']).match(/Card\s*••\s*(\d{4})/) || [])[1] || '') };
 }
 
-/** Save the photo to Drive right away and read it. With createDraft, also file it as an expense "To review". */
-function scanReceipt_(a, me) {
+/* ---- receipt photos: save first, read second, so a failed read never loses the photo ---- */
+
+/** Save the photo to Drive (and, for uploads, file a "To review" expense with it). No reading yet. */
+function uploadReceipt_(a, me) {
   mustManage_(me);
   var img = a.image || {};
   if (!img.data) throw new Error('No photo received.');
   var b = bizKey_(a.business), hash = norm_(a.hash).slice(0, 80);
+  if (hash && a.skipIfSamePhoto) {
+    var same = rows_('Expenses').filter(function (x) { return lower_(x['DELETED']) !== 'yes' && bizKey_(x['BUSINESS']) === b && norm_(x['HASH']) === hash; })[0];
+    if (same) return { skipped: true, duplicates: [{ id: norm_(same['ID']), vendor: norm_(same['VENDOR']), amount: num_(same['AMOUNT']), date: dstr_(same['DATE']), reason: 'Same photo' }] };
+  }
   var blob = Utilities.newBlob(Utilities.base64Decode(img.data), img.type || 'image/jpeg',
     'Receipt ' + dstr_(now_()) + ' ' + Utilities.formatDate(now_(), Session.getScriptTimeZone(), 'HHmmss') + '.jpg');
-  var text = ocr_(blob);
-  var p = parseReceipt_(text);
-  var dups = findDuplicates_(b, hash, p.vendor, p.total, p.date, a.id);
-  var account = lastAccountFor_(b, p.vendor) || p.account;
-  if (a.skipIfSamePhoto && dups.some(function (d) { return d.reason === 'Same photo'; })) {
-    return { skipped: true, duplicates: dups, vendor: p.vendor, total: p.total, date: p.date };   // nothing saved
-  }
-  var file = receiptsFolder_(b, p.date || dstr_(now_())).createFile(blob);
-  var out = { fileId: file.getId(), link: file.getUrl(), text: text.slice(0, 3000), read: !!text, duplicates: dups,
-              vendor: p.vendor, date: p.date, total: p.total, account: account, method: p.method, card: p.card || '' };
+  var file = receiptsFolder_(b, dstr_(now_())).createFile(blob);
+  var out = { fileId: file.getId(), link: file.getUrl() };
   if (a.createDraft) {
     var id = norm_(a.id) || Utilities.getUuid();
-    var rec = { 'ID': id, 'BUSINESS': b, 'STATUS': 'Review', 'DATE': p.date || dstr_(now_()), 'VENDOR': p.vendor,
-      'ACCOUNT': account, 'AMOUNT': p.total, 'METHOD': p.method, 'JOB': '', 'NOTE': p.card ? 'Card ••' + p.card : '', 'RECEIPT': out.fileId,
-      'HASH': hash, 'DUP OF': dups.length ? dups[0].id : '', 'SCANNED': out.text, 'CREATED BY': me.name,
-      'CREATED': now_().toISOString(), 'UPDATED': now_().toISOString(), 'DELETED': '' };
-    rec['RECEIPT LINK'] = fileReceipt_(out.fileId, b, { 'DATE': rec['DATE'], 'VENDOR': p.vendor, 'AMOUNT': p.total }) || out.link;
-    append_('Expenses', rec);
+    if (!findBy_('Expenses', 'ID', id)) {
+      append_('Expenses', { 'ID': id, 'BUSINESS': b, 'STATUS': 'Review', 'DATE': dstr_(now_()), 'VENDOR': '', 'ACCOUNT': '', 'AMOUNT': 0,
+        'METHOD': '', 'JOB': norm_(a.job), 'NOTE': '', 'RECEIPT': out.fileId, 'RECEIPT LINK': out.link, 'HASH': hash, 'DUP OF': '', 'SCANNED': '',
+        'CREATED BY': me.name, 'CREATED': now_().toISOString(), 'UPDATED': now_().toISOString(), 'DELETED': '' });
+    }
     out.expense = expenseOut_(findBy_('Expenses', 'ID', id));
   }
   return out;
+}
+
+/** Read a saved photo (by expense id or Drive file id), fill in what it can, and say whose card it was. */
+function readReceipt_(a, me) {
+  mustManage_(me);
+  var row = norm_(a.id) ? findBy_('Expenses', 'ID', a.id) : null;
+  var fid = norm_(a.fileId) || (row ? norm_(row['RECEIPT']) : '');
+  if (!fid) throw new Error('No saved photo to read.');
+  var b = bizKey_(row ? row['BUSINESS'] : a.business);
+  var text = '';
+  try { text = ocr_(DriveApp.getFileById(fid).getBlob()); } catch (e) { text = ''; }
+  var p = parseReceipt_(text);
+  var card = p.card ? cardFor_(b, p.card) : null;
+  var hidden = !!(card && !canUseCard_(me, card));
+  var hash = row ? norm_(row['HASH']) : norm_(a.hash);
+  var dups = findDuplicates_(b, hash, p.vendor, p.total, p.date, row ? norm_(row['ID']) : a.id)
+    .filter(function (d) { return d.reason !== 'Same photo' || !row; });
+  var account = lastAccountFor_(b, p.vendor) || p.account;
+  var out = { fileId: fid, text: text.slice(0, 3000), read: !!text, vendor: p.vendor, date: p.date, total: p.total, account: account,
+              method: p.method, card: hidden ? '' : (p.card || ''), cardInfo: hidden ? null : card, cardHidden: hidden, duplicates: dups };
+  if (row && norm_(row['STATUS']) === 'Review') {                      // fill the draft; never overwrite what someone already typed
+    var upd = { 'SCANNED': out.text, 'UPDATED': now_().toISOString() };
+    if (!num_(row['AMOUNT']) && p.total) upd['AMOUNT'] = p.total;
+    if (!norm_(row['VENDOR']) && p.vendor) upd['VENDOR'] = p.vendor;
+    if (p.date) upd['DATE'] = p.date;
+    if (!norm_(row['ACCOUNT']) && account) upd['ACCOUNT'] = account;
+    if (!norm_(row['METHOD']) && p.method) upd['METHOD'] = p.method;
+    if (p.card) upd['CARD'] = p.card;
+    if (card && !norm_(row['BANK']) && !norm_(row['PAID BY'])) { upd['BANK'] = card.bank; upd['PAID BY'] = card.bank ? '' : card.holder; }
+    if (dups.length && norm_(row['DUP OF']) !== 'CLEARED') upd['DUP OF'] = dups[0].id;
+    writeRow_('Expenses', row._row, upd);
+    if (upd['VENDOR'] || upd['AMOUNT']) fileReceipt_(fid, b, { 'DATE': upd['DATE'] || dstr_(row['DATE']), 'VENDOR': upd['VENDOR'] || norm_(row['VENDOR']), 'AMOUNT': upd['AMOUNT'] || num_(row['AMOUNT']) });
+    out.expense = expenseOut_(findBy_('Expenses', 'ID', row['ID']));
+    if (hidden) { out.expense.card = ''; out.expense.cardHidden = true; }
+  }
+  return out;
+}
+
+/** Older app versions: save then read in one call. */
+function scanReceipt_(a, me) {
+  var up = uploadReceipt_(a, me);
+  if (up.skipped) return up;
+  var r = up.expense ? readReceipt_({ id: up.expense.id }, me) : readReceipt_({ fileId: up.fileId, business: a.business, hash: a.hash, id: a.id }, me);
+  r.fileId = up.fileId; r.link = up.link;
+  return r;
+}
+
+/* ---- cards: whose card a last-4 is, who may use it, and where its charges come from ----
+   A card belongs to a person (OWNER email). People see and use their own cards, plus cards of the people listed in
+   their Team CARDS column ("All" = everyone's). A card with no owner (someone not on the team) is open to the business. */
+
+function cardOut_(r) {
+  return { id: norm_(r['ID']), business: norm_(r['BUSINESS']) ? bizKey_(r['BUSINESS']) : '', last4: norm_(r['LAST4']), holder: norm_(r['HOLDER']),
+           bank: norm_(r['BANK']), note: norm_(r['NOTE']), owner: lower_(r['OWNER']), name: norm_(r['NAME']) };
+}
+function canUseCard_(person, c) {
+  if (!person) return true;
+  var owner = c.owner !== undefined ? c.owner : lower_(c['OWNER']);
+  if (!owner || person.cardsAll || owner === lower_(person.email)) return true;
+  return (person.cardsOf || []).indexOf(owner) >= 0;
+}
+function cardRows_(business) {
+  return rows_('Cards').filter(function (r) { return norm_(r['ID']) && lower_(r['ACTIVE']) !== 'no' && (!business || !norm_(r['BUSINESS']) || bizKey_(r['BUSINESS']) === business); });
+}
+function cardFor_(business, last4) {
+  last4 = norm_(last4); if (!last4) return null;
+  var hit = cardRows_(business).filter(function (r) { return norm_(r['LAST4']) === last4; })[0];
+  return hit ? cardOut_(hit) : null;
+}
+/** Names whose money this person may log: their own, the people whose cards they use, or anyone with "All". */
+function moneyOwnerOk_(person, name) {
+  name = lower_(name);
+  if (!name || !person || person.cardsAll || name === lower_(person.name)) return true;
+  return rows_('Team').some(function (t) { return lower_(t['NAME']) === name && (person.cardsOf || []).indexOf(lower_(t['EMAIL'])) >= 0; });
+}
+function saveCard_(a, me) {
+  mustManage_(me);
+  var b = bizKey_(a.business), last4 = norm_(a.last4).replace(/\D/g, '').slice(-4);
+  if (last4.length !== 4) throw new Error('Enter the last 4 digits of the card.');
+  var holder = norm_(a.holder).slice(0, 100);
+  if (!holder) throw new Error('Whose card is it?');
+  var team = rows_('Team'), hl = lower_(holder);
+  var tm = team.filter(function (t) { var n = lower_(t['NAME']); return lower_(t['EMAIL']) === hl || n === hl || (hl.indexOf(' ') < 0 && n.split(' ')[0] === hl); })[0];
+  if (tm) holder = norm_(tm['NAME']);
+  var owner = tm ? lower_(tm['EMAIL']) : '';
+  if (!canUseCard_(me, { owner: owner })) throw new Error('You can only add your own cards' + ((me.cardsOf || []).length ? ' or ones you’re allowed to use' : '') + '.');
+  var bank = bankFor_(a.bank, b);
+  var existing = norm_(a.id) ? findBy_('Cards', 'ID', a.id) : null;
+  if (!existing) existing = cardRows_(bank ? b : '').filter(function (r) { return norm_(r['LAST4']) === last4; })[0] || null;
+  if (existing && !canUseCard_(me, cardOut_(existing))) throw new Error('Card ••' + last4 + ' belongs to someone else.');
+  var rec = { 'LAST4': last4, 'HOLDER': holder, 'OWNER': owner, 'NAME': norm_(a.name).slice(0, 60), 'BANK': bank, 'BUSINESS': bank ? b : '',
+              'NOTE': norm_(a.note).slice(0, 200), 'ACTIVE': 'YES' };
+  var id;
+  if (existing) { id = norm_(existing['ID']); writeRow_('Cards', existing._row, rec); }
+  else { id = norm_(a.id) || Utilities.getUuid(); rec['ID'] = id; rec['CREATED'] = now_().toISOString(); append_('Cards', rec); }
+  // receipts waiting for review that were paid with this card now know who paid
+  var n = 0;
+  rows_('Expenses').forEach(function (x) {
+    if (lower_(x['DELETED']) === 'yes' || norm_(x['STATUS']) !== 'Review' || (bank && bizKey_(x['BUSINESS']) !== b)) return;
+    var c = norm_(x['CARD']) || ((norm_(x['NOTE']).match(/Card\s*••\s*(\d{4})/) || [])[1] || '');
+    if (c !== last4) return;
+    writeRow_('Expenses', x._row, { 'CARD': last4, 'BANK': bank, 'PAID BY': bank ? '' : holder });
+    n++;
+  });
+  return { ok: true, id: id, updated: n, holder: holder, owner: owner };
+}
+function archiveCard_(a, me) {
+  mustManage_(me);
+  var r = findBy_('Cards', 'ID', a.id);
+  if (r && !canUseCard_(me, cardOut_(r))) throw new Error('That card belongs to someone else.');
+  if (r) writeRow_('Cards', r._row, { 'ACTIVE': 'NO' });
+  return { ok: true };
 }
 
 function saveExpense_(a, me) {
@@ -1154,6 +1342,16 @@ function saveExpense_(a, me) {
   var b = bizKey_(existing ? existing['BUSINESS'] : a.business);
   if (a.bank !== undefined) { rec['BANK'] = bankFor_(a.bank, b); }
   if (a.paidBy !== undefined) rec['PAID BY'] = rec['BANK'] ? '' : norm_(a.paidBy).slice(0, 100);
+  if (existing && rec['PAID BY'] && rec['PAID BY'].indexOf(MASK) >= 0) rec['PAID BY'] = norm_(existing['PAID BY']);
+  if (existing) ['VENDOR', 'NOTE'].forEach(function (k) { if (rec[k] && rec[k].indexOf(MASK) >= 0 && norm_(existing[k]).indexOf(MASK) < 0) rec[k] = norm_(existing[k]); });
+  if (rec['PAID BY'] && rec['PAID BY'] !== (existing ? norm_(existing['PAID BY']) : '') && !moneyOwnerOk_(me, rec['PAID BY']))
+    throw new Error('You can log your own money' + ((me.cardsOf || []).length ? ' or money of people whose cards you use' : '') + ', not ' + rec['PAID BY'] + '’s.');
+  var l4 = norm_(a.card).replace(/\D/g, '').slice(-4);
+  if (l4 && l4 !== (existing ? norm_(existing['CARD']) : '')) {          // a blank card never wipes one this person can't see
+    var kc = cardFor_(b, l4);
+    if (kc && !canUseCard_(me, kc)) throw new Error('Card ••' + l4 + ' isn’t one you can use.');
+    rec['CARD'] = l4;
+  } else if (a.card === '' && a.clearCard) rec['CARD'] = '';
   if (a.checkNo !== undefined) rec['CHECK NO'] = norm_(a.checkNo).replace(/^#/, '').slice(0, 20);
   if (a.checkImage && a.checkImage.data) {
     rec['CHECK FILE'] = receiptsFolder_(b, rec['DATE']).createFile(Utilities.newBlob(Utilities.base64Decode(a.checkImage.data), a.checkImage.type || 'image/jpeg', 'check.jpg')).getId();
@@ -1492,8 +1690,10 @@ function scanCheck_(a, me) {
   var b = bizKey_(a.business);
   var blob = Utilities.newBlob(Utilities.base64Decode(img.data), img.type || 'image/jpeg',
     'Check ' + dstr_(now_()) + ' ' + Utilities.formatDate(now_(), Session.getScriptTimeZone(), 'HHmmss') + '.jpg');
-  var text = ocr_(blob), p = parseCheck_(text);
-  var file = receiptsFolder_(b, p.date || dstr_(now_())).createFile(blob);
+  var file = receiptsFolder_(b, dstr_(now_())).createFile(blob);     // saved before reading, so the photo is never lost
+  var text = '';
+  try { text = ocr_(file.getBlob()); } catch (e) { text = ''; }
+  var p = parseCheck_(text);
   var vendor = p.payee, best = '';
   if (p.payee) {                                               // tidy the payee to a saved vendor name when it's close
     var pk = vendorKey_(p.payee);
@@ -1562,7 +1762,7 @@ function migrate_() {
 
 /* ---- read ---- */
 
-function business_(allowed) {
+function business_(allowed, person) {
   allowed = allowed || ['uffg', 'uribest'];
   var ok = function (o) { return allowed.indexOf(o.business) >= 0; };
   var customers = rows_('Customers').filter(function (c) { return lower_(c['ACTIVE']) !== 'no' && norm_(c['ID']); })
@@ -1599,7 +1799,14 @@ function business_(allowed) {
   var docIds = {}; docs.forEach(function (d) { docIds[d.id] = 1; });
   payments = payments.filter(function (p) { return docIds[p.invoice]; });
   var expenses = rows_('Expenses').filter(function (x) { return lower_(x['DELETED']) !== 'yes' && norm_(x['ID']); }).map(expenseOut_).filter(ok);
-  expenses.forEach(function (x) { if (x.dupOf === 'CLEARED') x.dupOf = ''; });
+  var allCards = rows_('Cards').filter(function (r) { return norm_(r['ID']) && lower_(r['ACTIVE']) !== 'no'; }).map(cardOut_);
+  var myCards = allCards.filter(function (c) { return canUseCard_(person, c) && (!c.business || allowed.indexOf(c.business) >= 0); });
+  expenses.forEach(function (x) {
+    if (x.dupOf === 'CLEARED') x.dupOf = '';
+    if (!x.card) return;
+    var c = allCards.filter(function (k) { return k.last4 === x.card && (!k.business || k.business === x.business); })[0];
+    if (c && !canUseCard_(person, c)) { x.card = ''; x.cardHidden = true; }        // other people's card numbers stay theirs
+  });
   var co = company_(), coOut = {};
   allowed.forEach(function (b) { coOut[b] = co[b]; });
   var banks = rows_('Banks').filter(function (r) { return norm_(r['ID']); }).map(bankOut_).filter(ok);
@@ -1611,7 +1818,9 @@ function business_(allowed) {
                                  amount: num_(x['AMOUNT']), bank: norm_(x['BANK']), toBank: norm_(x['TO BANK']), person: norm_(x['PERSON']),
                                  note: norm_(x['NOTE']), who: norm_(x['WHO']), created: norm_(x['CREATED']) }; }).filter(ok);
   return { company: coOut, businesses: allowed, customers: customers, services: services, docs: docs, payments: payments,
-           expenses: expenses, accounts: ACCOUNTS, banks: banks, vendors: vendors, banking: banking, bankingTypes: BANKING_TYPES };
+           expenses: expenses, accounts: ACCOUNTS, banks: banks, vendors: vendors, banking: banking, bankingTypes: BANKING_TYPES,
+           cards: myCards,
+           cardRule: { all: !person || !!person.cardsAll, of: person ? (person.cardsOf || []) : [] } };
 }
 
 /* --------------------------------------------------------------- routing */
@@ -1619,13 +1828,13 @@ function business_(allowed) {
 var PUBLIC = { requestCode: requestCode_, verifyCode: verifyCode_ };
 var BIZ_FNS = { saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1, saveDoc:1, setDocStatus:1,
                 deleteDoc:1, addPayment:1, deletePayment:1, saveExpense:1, deleteExpense:1, getReceipt:1, scanReceipt:1,
-                saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, scanCheck:1, importExpenses:1, saveBudget:1, saveSplit:1 };
+                saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, scanCheck:1, importExpenses:1, saveBudget:1, saveSplit:1, uploadReceipt:1, readReceipt:1, saveCard:1, archiveCard:1 };
 var NEEDS_ID = { addTool:1, moveTool:1, setToolStatus:1, addPart:1, setLowTarget:1,
                  adjustStock:1, transferStock:1, addLocation:1, archiveLocation:1, bulkImport:1,
                  saveCompany:1, saveCustomer:1, archiveCustomer:1, saveService:1, archiveService:1,
                  saveDoc:1, setDocStatus:1, deleteDoc:1, addPayment:1, deletePayment:1,
                  saveExpense:1, deleteExpense:1,
-                 saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, importExpenses:1, saveBudget:1, saveSplit:1 };
+                 saveBank:1, saveVendor:1, archiveVendor:1, saveBankTx:1, deleteBankTx:1, setPaymentBank:1, importExpenses:1, saveBudget:1, saveSplit:1, saveCard:1, archiveCard:1 };
 
 function handlers_() {
   return {
@@ -1642,7 +1851,8 @@ function handlers_() {
     addPayment: addPayment_, deletePayment: deletePayment_,
     saveExpense: saveExpense_, deleteExpense: deleteExpense_, getReceipt: getReceipt_, scanReceipt: scanReceipt_,
     saveBank: saveBank_, saveVendor: saveVendor_, archiveVendor: archiveVendor_, saveBankTx: saveBankTx_, deleteBankTx: deleteBankTx_,
-    setPaymentBank: setPaymentBank_, scanCheck: scanCheck_, importExpenses: importExpenses_, saveBudget: saveBudget_, saveSplit: saveSplit_
+    setPaymentBank: setPaymentBank_, scanCheck: scanCheck_, importExpenses: importExpenses_, saveBudget: saveBudget_, saveSplit: saveSplit_,
+    uploadReceipt: uploadReceipt_, readReceipt: readReceipt_, saveCard: saveCard_, archiveCard: archiveCard_
   };
 }
 
@@ -1651,7 +1861,10 @@ function bizOfCall_(fn, a) {
   a = a || {};
   var rowBiz = function (tab, id) { var r = id ? findBy_(tab, 'ID', id) : null; return r ? bizKey_(r['BUSINESS']) : ''; };
   switch (fn) {
-    case 'saveCompany': case 'scanReceipt': case 'scanCheck': case 'importExpenses': return bizKey_(a.business);
+    case 'saveCompany': case 'scanReceipt': case 'scanCheck': case 'importExpenses': case 'uploadReceipt': return bizKey_(a.business);
+    case 'readReceipt': return rowBiz('Expenses', a.id) || bizKey_(a.business);
+    case 'saveCard': return rowBiz('Cards', a.id) || bizKey_(a.business);
+    case 'archiveCard': return rowBiz('Cards', a.id);
     case 'saveBank': return rowBiz('Banks', a.id) || bizKey_(a.business);
     case 'saveVendor': return rowBiz('Vendors', a.id) || bizKey_(a.business);
     case 'archiveVendor': return rowBiz('Vendors', a.id);
@@ -1728,7 +1941,8 @@ function doPost(e) {
     var who = me;
     if (BIZ_FNS[fn]) {
       who = acting === me ? me : { email: acting.email, name: acting.name, base: acting.base, role: acting.role,
-                                   isManager: me.isManager && acting.isManager, businesses: acting.businesses };
+                                   isManager: me.isManager && acting.isManager, businesses: acting.businesses,
+                                   cardsAll: acting.cardsAll, cardsOf: acting.cardsOf };
       var bk = bizOfCall_(fn, args);
       if (bk && who.businesses.indexOf(bk) < 0) throw new Error((who === me ? 'You don’t' : who.name + ' doesn’t') + ' have access to ' + BUSINESSES[bk].defaults.name + '.');
     }
@@ -1740,10 +1954,10 @@ function doPost(e) {
         if (alreadyDone_(id)) return json_({ ok: true, data: { ok: true, duplicate: true } });
         var out = h(args, who, acting, token);
         markDone_(id);
-        return json_({ ok: true, data: out });
+        return json_({ ok: true, data: scrub_(out, hiddenFor_(acting)) });
       } finally { lock.releaseLock(); }
     }
-    return json_({ ok: true, data: h(args, who, acting, token) });
+    return json_({ ok: true, data: scrub_(h(args, who, acting, token), hiddenFor_(acting)) });
 
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message ? err.message : err) });
